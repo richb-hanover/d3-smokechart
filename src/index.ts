@@ -11,6 +11,8 @@ export interface SmokechartProps {
 
 export interface SmokechartArgs {
   mode?: "smoke" | "flame"
+  bands?: 0 | 1 | 2 | 3 | 4 | 5
+  errors?: boolean
 }
 
 const quantile = (probes: SmokeProbeList, q: number) => {
@@ -55,6 +57,7 @@ const flameAreaConfig = [
 export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
   const props: SmokechartProps = {}
   let data: SmokeData = []
+  let classSuffix = Math.floor(Math.random() * 100000)
 
   const smoke = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
     if (smokeData && !Array.isArray(smokeData)) {
@@ -63,6 +66,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     }
     if (opts) Object.assign(props, opts)
     if (smokeData) smoke.data(smokeData)
+
+    classSuffix = Math.floor(Math.random() * 100000)
     return smoke
   }
 
@@ -72,7 +77,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   smoke.data = (smokeData?: SmokeData) => {
     if (smokeData) {
       // clone data while sorting each row
-      data = smokeData.map(arr => [...arr.filter(n => !isNaN(n) !== undefined)].sort((a, b) => a - b))
+      data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b))
       return smoke
     }
     return data
@@ -157,19 +162,44 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
   }
 
+  /**
+   * obj.countErrors(probeCount) returns number of probes missing in each of the listed probes
+   * probeCount defaults to max number of probes within list of elements given in data
+   *
+   * Returns list of {x, errPos} tuples where errPos grows from 0 to probeCount for each set of probes in data
+   */
+  smoke.countErrors = (probeCount: number = -1) => {
+    const values = data.map(list => list.length)
+    const desired = probeCount >= 0 ? probeCount : Math.max(...values)
+    // note that the err count could not be below 0
+    const underCount = values.map(ln => (desired > ln ? desired - ln : 0))
+    // list above is positioned errcount... let's transform it to desired format
+    return underCount.reduce<Array<{ x: number; errPos: number }>>((ret, under, idx) => {
+      if (under > 0) {
+        const elems = []
+        const x = props.scaleX ? props.scaleX(idx) : idx
+        for (let errPos = 0; errPos < under; errPos++) elems.push({ x, errPos })
+        return [...ret, ...elems]
+      }
+      return ret
+    }, [])
+  }
+
   /** obj.smokechart renders fully functional chart */
   smoke.chart = (selection: any, args?: SmokechartArgs) => {
-    selection
-      .selectAll("path.smokechart-band")
-      .data(smoke.smokeBands(3))
-      .enter()
-      .append("path")
-      .classed("smokechart-band", true)
-      .attr("fill", "rgba(0,0,0,.25)")
-      .attr("d", (d: string) => d)
+    if (args?.bands) {
+      selection
+        .selectAll("path.smokechart-band" + classSuffix)
+        .data(smoke.smokeBands(args?.bands))
+        .enter()
+        .append("path")
+        .classed("smokechart-band", true)
+        .attr("fill", "rgba(0,0,0,0.18)")
+        .attr("d", (d: string) => d)
+    }
 
     selection
-      .selectAll("path.smokechart-line")
+      .selectAll("path.smokechart-line" + classSuffix)
       .data(smoke.line(0.5))
       .enter()
       .append("path")
@@ -178,6 +208,21 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .attr("stroke-width", 1.1)
       .attr("fill", "transparent")
       .attr("d", (d: string) => d)
+
+    if (args?.errors) {
+      const errors = smoke.countErrors() || []
+      if (errors.length) {
+        selection
+          .selectAll("circle.smokechart-baseline" + classSuffix)
+          .data(errors)
+          .enter()
+          .append("circle")
+          .attr("cx", (d: { x: number }) => d.x)
+          .attr("cy", (d: { errPos: number }) => 3 + d.errPos * 4.5)
+          .attr("r", 2)
+          .attr("fill", "#f30")
+      }
+    }
   }
 
   return smoke(smokeData, opts)

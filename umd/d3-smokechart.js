@@ -27,6 +27,7 @@
     const Smokechart = (smokeData, opts) => {
         const props = {};
         let data = [];
+        let classSuffix = Math.floor(Math.random() * 100000);
         const smoke = (smokeData, opts) => {
             if (smokeData && !Array.isArray(smokeData)) {
                 opts = smokeData;
@@ -36,11 +37,12 @@
                 Object.assign(props, opts);
             if (smokeData)
                 smoke.data(smokeData);
+            classSuffix = Math.floor(Math.random() * 100000);
             return smoke;
         };
         smoke.data = (smokeData) => {
             if (smokeData) {
-                data = smokeData.map(arr => [...arr.filter(n => !isNaN(n) !== undefined)].sort((a, b) => a - b));
+                data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b));
                 return smoke;
             }
             return data;
@@ -104,17 +106,34 @@
             }, []);
             return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""));
         };
+        smoke.countErrors = (probeCount = -1) => {
+            const values = data.map(list => list.length);
+            const desired = probeCount >= 0 ? probeCount : Math.max(...values);
+            const underCount = values.map(ln => (desired > ln ? desired - ln : 0));
+            return underCount.reduce((ret, under, idx) => {
+                if (under > 0) {
+                    const elems = [];
+                    const x = props.scaleX ? props.scaleX(idx) : idx;
+                    for (let errPos = 0; errPos < under; errPos++)
+                        elems.push({ x, errPos });
+                    return [...ret, ...elems];
+                }
+                return ret;
+            }, []);
+        };
         smoke.chart = (selection, args) => {
+            if (args === null || args === void 0 ? void 0 : args.bands) {
+                selection
+                    .selectAll("path.smokechart-band" + classSuffix)
+                    .data(smoke.smokeBands(args === null || args === void 0 ? void 0 : args.bands))
+                    .enter()
+                    .append("path")
+                    .classed("smokechart-band", true)
+                    .attr("fill", "rgba(0,0,0,0.18)")
+                    .attr("d", (d) => d);
+            }
             selection
-                .selectAll("path.smokechart-band")
-                .data(smoke.smokeBands(3))
-                .enter()
-                .append("path")
-                .classed("smokechart-band", true)
-                .attr("fill", "rgba(0,0,0,.25)")
-                .attr("d", (d) => d);
-            selection
-                .selectAll("path.smokechart-line")
+                .selectAll("path.smokechart-line" + classSuffix)
                 .data(smoke.line(0.5))
                 .enter()
                 .append("path")
@@ -123,6 +142,20 @@
                 .attr("stroke-width", 1.1)
                 .attr("fill", "transparent")
                 .attr("d", (d) => d);
+            if (args === null || args === void 0 ? void 0 : args.errors) {
+                const errors = smoke.countErrors() || [];
+                if (errors.length) {
+                    selection
+                        .selectAll("circle.smokechart-baseline" + classSuffix)
+                        .data(errors)
+                        .enter()
+                        .append("circle")
+                        .attr("cx", (d) => d.x)
+                        .attr("cy", (d) => 3 + d.errPos * 4.5)
+                        .attr("r", 2)
+                        .attr("fill", "#f30");
+                }
+            }
         };
         return smoke(smokeData, opts);
     };
