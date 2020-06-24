@@ -2,8 +2,8 @@ import { ScaleLinear } from "d3-scale";
 export declare type SmokeProbeList = number[];
 export declare type SmokeData = SmokeProbeList[];
 export interface SmokechartProps {
-    scaleX?: ScaleLinear<number, number>;
-    scaleY?: ScaleLinear<number, number>;
+    scaleX: ScaleLinear<number, number>;
+    scaleY: ScaleLinear<number, number>;
 }
 export interface SmokechartArgs {
     mode?: "smoke" | "flame";
@@ -15,8 +15,8 @@ export declare const Smokechart: (smokeData?: SmokeData | Partial<SmokechartProp
     (smokeData?: SmokeData | Partial<SmokechartProps> | undefined, opts?: Partial<SmokechartProps> | undefined): any;
     data(smokeData?: SmokeData | undefined): SmokeData | any;
     adjustScaleRange(): any | undefined;
-    scaleX(newScale?: ScaleLinear<number, number> | undefined): ScaleLinear<number, number> | any | undefined;
-    scaleY(newScale?: ScaleLinear<number, number> | undefined): ScaleLinear<number, number> | any | undefined;
+    scaleX(newScale?: ScaleLinear<number, number> | undefined): ScaleLinear<number, number> | any;
+    scaleY(newScale?: ScaleLinear<number, number> | undefined): ScaleLinear<number, number> | any;
     line(q?: number): (string | null)[];
     smokeBands(bCount?: 1 | 2 | 3 | 4 | 5): string[];
     countErrors(probeCount?: number): {

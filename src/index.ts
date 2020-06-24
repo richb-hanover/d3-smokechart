@@ -1,12 +1,13 @@
-import { ScaleLinear } from "d3-scale"
+import { ScaleLinear, scaleLinear } from "d3-scale"
+
 import { line } from "d3-shape"
 
 export type SmokeProbeList = number[]
 export type SmokeData = SmokeProbeList[]
 
 export interface SmokechartProps {
-  scaleX?: ScaleLinear<number, number>
-  scaleY?: ScaleLinear<number, number>
+  scaleX: ScaleLinear<number, number>
+  scaleY: ScaleLinear<number, number>
 }
 
 export interface SmokechartArgs {
@@ -55,7 +56,10 @@ const flameAreaConfig = [
  *
  */
 export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
-  const props: SmokechartProps = {}
+  const props: SmokechartProps = {
+    scaleX: scaleLinear(),
+    scaleY: scaleLinear(),
+  }
   let data: SmokeData = []
   let classSuffix = Math.floor(Math.random() * 100000)
 
@@ -212,14 +216,18 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     if (args?.errors) {
       const errors = smoke.countErrors() || []
       if (errors.length) {
+        let r = props.scaleX(0.25) - props.scaleX(0)
+        if (r < 2) {
+          r = 2
+        }
         selection
           .selectAll("circle.smokechart-baseline" + classSuffix)
           .data(errors)
           .enter()
           .append("circle")
           .attr("cx", (d: { x: number }) => d.x)
-          .attr("cy", (d: { errPos: number }) => 3 + d.errPos * 4.5)
-          .attr("r", 2)
+          .attr("cy", (d: { errPos: number }) => r + d.errPos * r * 2.2)
+          .attr("r", r)
           .attr("fill", "#f30")
       }
     }

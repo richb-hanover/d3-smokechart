@@ -1,8 +1,8 @@
 (function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-shape')) :
-    typeof define === 'function' && define.amd ? define(['exports', 'd3-shape'], factory) :
-    (global = global || self, factory(global.d3 = global.d3 || {}, global.d3));
-}(this, (function (exports, d3Shape) { 'use strict';
+    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('d3-scale'), require('d3-shape')) :
+    typeof define === 'function' && define.amd ? define(['exports', 'd3-scale', 'd3-shape'], factory) :
+    (global = global || self, factory(global.d3 = global.d3 || {}, global.d3, global.d3));
+}(this, (function (exports, d3Scale, d3Shape) { 'use strict';
 
     const quantile = (probes, q) => {
         if (q < 0 || q > 1 || isNaN(q))
@@ -25,7 +25,10 @@
         return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)]);
     };
     const Smokechart = (smokeData, opts) => {
-        const props = {};
+        const props = {
+            scaleX: d3Scale.scaleLinear(),
+            scaleY: d3Scale.scaleLinear(),
+        };
         let data = [];
         let classSuffix = Math.floor(Math.random() * 100000);
         const smoke = (smokeData, opts) => {
@@ -145,14 +148,18 @@
             if (args === null || args === void 0 ? void 0 : args.errors) {
                 const errors = smoke.countErrors() || [];
                 if (errors.length) {
+                    let r = props.scaleX(0.25) - props.scaleX(0);
+                    if (r < 2) {
+                        r = 2;
+                    }
                     selection
                         .selectAll("circle.smokechart-baseline" + classSuffix)
                         .data(errors)
                         .enter()
                         .append("circle")
                         .attr("cx", (d) => d.x)
-                        .attr("cy", (d) => 3 + d.errPos * 4.5)
-                        .attr("r", 2)
+                        .attr("cy", (d) => r + d.errPos * r * 2.2)
+                        .attr("r", r)
                         .attr("fill", "#f30");
                 }
             }

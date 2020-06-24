@@ -1,3 +1,4 @@
+import { scaleLinear } from "d3-scale";
 import { line } from "d3-shape";
 const quantile = (probes, q) => {
     if (q < 0 || q > 1 || isNaN(q))
@@ -28,7 +29,10 @@ const flameAreaConfig = [
     [.5, .6, .7, .8, .9]
 ];
 export const Smokechart = (smokeData, opts) => {
-    const props = {};
+    const props = {
+        scaleX: scaleLinear(),
+        scaleY: scaleLinear(),
+    };
     let data = [];
     let classSuffix = Math.floor(Math.random() * 100000);
     const smoke = (smokeData, opts) => {
@@ -148,14 +152,18 @@ export const Smokechart = (smokeData, opts) => {
         if (args === null || args === void 0 ? void 0 : args.errors) {
             const errors = smoke.countErrors() || [];
             if (errors.length) {
+                let r = props.scaleX(0.25) - props.scaleX(0);
+                if (r < 2) {
+                    r = 2;
+                }
                 selection
                     .selectAll("circle.smokechart-baseline" + classSuffix)
                     .data(errors)
                     .enter()
                     .append("circle")
                     .attr("cx", (d) => d.x)
-                    .attr("cy", (d) => 3 + d.errPos * 4.5)
-                    .attr("r", 2)
+                    .attr("cy", (d) => r + d.errPos * r * 2.2)
+                    .attr("r", r)
                     .attr("fill", "#f30");
             }
         }
