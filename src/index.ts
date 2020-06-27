@@ -2,8 +2,8 @@ import { ScaleLinear, scaleLinear } from "d3-scale"
 
 import { line } from "d3-shape"
 
-export type SmokeProbeList = number[]
-export type SmokeData = SmokeProbeList[]
+export type SmokeSampleList = number[]      // list of measured "data samples"
+export type SmokeData = SmokeSampleList[]   // (changed terminology from "data probes")
 
 export interface SmokechartProps {
   scaleX: ScaleLinear<number, number>
@@ -16,13 +16,13 @@ export interface SmokechartArgs {
   errors?: boolean
 }
 
-const quantile = (probes: SmokeProbeList, q: number) => {
+const quantile = (samples: SmokeSampleList, q: number) => {
   if (q < 0 || q > 1 || isNaN(q)) throw new Error(`Unable to calculate ${q} quantile`)
-  var alq = (probes.length - 1) * q
+  var alq = (samples.length - 1) * q
   var idx = Math.floor(alq)
   var diff = alq - idx
 
-  return diff < 0.001 ? probes[idx] : Math.floor(probes[idx] * (1 - diff) + probes[idx + 1] * diff + 0.5)
+  return diff < 0.001 ? samples[idx] : Math.floor(samples[idx] * (1 - diff) + samples[idx + 1] * diff + 0.5)
 }
 
 // prettier-ignore
@@ -35,7 +35,7 @@ const smokeAreaConfig: Array<Array<[number, number]>> = [
   [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ] // 5
 ]
 
-export const calculateSmokeBands = (v: SmokeProbeList, bands: 0 | 1 | 2 | 3 | 4 | 5) => {
+export const calculateSmokeBands = (v: SmokeSampleList, bands: 0 | 1 | 2 | 3 | 4 | 5) => {
   const bandKind = smokeAreaConfig[bands]
   return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
 }
@@ -51,7 +51,7 @@ const flameAreaConfig = [
 ]
 
 /**
- * SmokeChart returns class responsible for building Smoke viz.
+ * SmokeChart returns class responsible for building Smoke Charts.
  *
  *
  */
@@ -60,9 +60,14 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
   }
-  let data: SmokeData = []
-  let classSuffix = Math.floor(Math.random() * 100000)
+  let cleanedData: SmokeData = []          // class variable to hold The Data
+  let classSuffix = Math.floor(Math.random() * 100000) // random number to append to classname
 
+  /**
+   * smoke (SmokeData, SmokechartProps)
+   * @param smokeData
+   * @param opts
+   */
   const smoke = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
     if (smokeData && !Array.isArray(smokeData)) {
       opts = smokeData
@@ -76,26 +81,26 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /**
-   * obj.data() initializes smokechart's matrix of probes, returning chainable object or returns current data if arg was omitted
+   * obj.data() initializes smokechart's matrix of samples, returning chainable object or returns current data if arg was omitted
    */
   smoke.data = (smokeData?: SmokeData) => {
     if (smokeData) {
       // clone data while sorting each row
-      data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b))
+      cleanedData = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b))
       return smoke
     }
-    return data
+    return cleanedData
   }
 
   /**
    * obj.adjustScaleRange() fixes X/Y scale input ranges to fit chart properly, useful to call when data changed
    */
   smoke.adjustScaleRange = () => {
-    if (props.scaleX) props.scaleX.domain([0, data.length])
+    if (props.scaleX) props.scaleX.domain([0, cleanedData.length])
     if (!props.scaleY) return
     let minY = Infinity
     let maxY = -Infinity
-    data.forEach(arr => {
+    cleanedData.forEach(arr => {
       if (arr.length) {
         if (arr[0] < minY) minY = arr[0]
         if (arr[arr.length - 1] > maxY) maxY = arr[arr.length - 1]
@@ -132,7 +137,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
       .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
 
-    const quantileData = data.reduce<Array<[number, number]>>((reslt, values, idx) => {
+    const quantileData = cleanedData.reduce<Array<[number, number]>>((reslt, values, idx) => {
       const p = quantile(values, q)
       return [...reslt, [idx - 0.5, p], [idx + 0.5, p]]
     }, [])
@@ -146,7 +151,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
       .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
 
-    const bands = data.reduce<string[][]>((reslt, values, idx) => {
+    const bands = cleanedData.reduce<string[][]>((reslt, values, idx) => {
       const bandData = calculateSmokeBands(values, bCount)
       const x = idx - 0.5
       const bandLines = bandData.map(
@@ -167,14 +172,14 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /**
-   * obj.countErrors(probeCount) returns number of probes missing in each of the listed probes
-   * probeCount defaults to max number of probes within list of elements given in data
+   * obj.countErrors(sampleCount) returns number of samples missing in each of the listed samples
+   * sampleCount defaults to max number of samples within list of elements given in cleanedData
    *
-   * Returns list of {x, errPos} tuples where errPos grows from 0 to probeCount for each set of probes in data
+   * Returns list of {x, errPos} tuples where errPos grows from 0 to sampleCount for each set of samples in data
    */
-  smoke.countErrors = (probeCount: number = -1) => {
-    const values = data.map(list => list.length)
-    const desired = probeCount >= 0 ? probeCount : Math.max(...values)
+  smoke.countErrors = (sampleCount: number = -1) => {
+    const values = cleanedData.map(list => list.length)
+    const desired = sampleCount >= 0 ? sampleCount : Math.max(...values)
     // note that the err count could not be below 0
     const underCount = values.map(ln => (desired > ln ? desired - ln : 0))
     // list above is positioned errcount... let's transform it to desired format
