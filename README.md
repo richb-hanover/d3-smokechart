@@ -27,6 +27,7 @@ Changes to the `smoke.html` file trigger a browser reload.
 cd path-to-d3-smokechart/example
 browser-sync start --server --files *.html
 ```
+Then open your browser to [http://localhost:3000/smoke.html](http://localhost:3000/smoke.html) and begin editing.
 
 ## Functions 
 
@@ -48,7 +49,7 @@ quantile() -
 
 calculateSmokeBands() -
 
-smoke.countErrors() - *deprecated*
+smoke.countErrors() - 
 
 ## Data structures
 
