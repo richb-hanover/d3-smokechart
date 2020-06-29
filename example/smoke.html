@@ -29,13 +29,13 @@
       [165,168,174,174,175,176], [173,173,173,179,184,276], [170,171,177,177,183,188], [174,175,176,178,178,270], [168,174,177,179,181,259],
       [128,153,162,172,174,191], [160,164,166,167,169,170], [155,156,157,157,162,234], [151,156,157,163,169,173], [165,165,170,178,178,284],
       [161,162,165,166,246,698], [147,148,148,156,160,165], [141,146,148,151,153,154], [158,162,169,170,170,255], [102,118,162,166,168,181],
-      [113,126,151,159,248,70], [158,162,162,170,232], [146,159,162,164,165,165], [110,167,171,172], [114,149,161,162,170,197],
+      [113,126,151,159,248,70], [158,162,162,170,232], [146,159,162,164,165,165], [110,167,171,172,NaN,NaN,NaN], [114,149,161,162,170,197],
       [155,161,166,167,169,247], [161,163,163,167,170,252], [162,165,166,173,178,243], [161,169,175,176,178,181], [165,166,167,171,171,171],
       [163,164,164,166,168,187], [165,167,168,170,172,182], [163,163,166,166,168,179], [172,172,173,175,184,225], [164,166,166,167,174,182],
       [160,161,163,171,172,200], [165,166,166,167,169,263], [170,171,171,173,176,177], [149,157,157,161,165,165], [162,162,163,169,171,255],
       [160,165,166,167,169,170], [167,167,170,171,174,202], [162,163,163,163,168,169], [113,122,140,146,153,157], [162,165,168,168,170,222],
       [165,169,172,174,185,186], [164,164,166,167,172,173], [162,168,168,171,185,185], [1054,115,134,135,167,96], [144,31,33,36,63,74],
-      [105,112,170,180,30,33], [31,32,33,35,45,53], [30,31,32,32,32,32], [143,262,32,43,49,95], [30,30,31,32,32,33],
+      [105,112,170,180,30,33], [31,32,33,35,45,53], [30,31,32,32,32,32], [143,262,32,43,49,95], [30,30,31,32,32,33,NaN],
       [27,30,30,31,31,87], [113,121,127,128,31,73], [111,112,137,138,147,148], [137,144,146,150,154,165], [144,145,149,150,154,216],
       [154,154,158,159,160,189], [158,160,161,162,169,266], [164,165,166,167,170,170], [157,159,160,161,161,192], [156,157,158,158,158,160],
       [154,158,162,175,183,222], [156,156,157,158,165,223], [159,164,167,168,170,171], [160,161,163,168,228], [163,163,164,165,166,169],
@@ -46,38 +46,69 @@
     const scaleY = d3.scaleLinear([290, 10])
 
     const smoker = d3.Smokechart({ scaleX, scaleY }).data(smokeData).adjustScaleRange()
-    const errors = smoker.countErrors()
+
+    // library's all-in-one example:
 
     const test1 = d3.select("#smokeTest1").append("svg").attr("width", 1050).attr("height", 300)
-    test1.append("g").call(smoker.chart, { mode: "smoke", bands: 5, errors: true })
+    test1.append("g").call(smoker.chart, {
+      mode: "smoke",
+      bands: 5,
+      errorRadius: 10,
+      lineWidth: 1,
+      bandsColor: "rgba(0,0,0,.075)",
+      lineColor: "rgb(0,100,0)",
+    })
+
+    // manual step-by-step rendering example with custom bands choice:
 
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
+
+    // custom way of adding errors first to create "color background stripes"
+    const errors = smoker.countErrors() // array of {errors, count} for each X
+
     const g = test2.append("g")
+    g.selectAll("rect.errorBands")
+      .data(errors)
+      .enter()
+      .append("rect")
+      .attr("fill", function (d) {
+        return `rgba(255, 0,0,${d.errors / d.count})`
+      })
+      .attr("x", function (d) {
+        return scaleX(d.xPos - 0.5)
+      })
+      .attr("height", 300)
+      .attr("width", function (d) {
+        return scaleX(d.xPos + 0.5) - scaleX(d.xPos - 0.5)
+      })
+
     g.selectAll("path.smokeBand")
-      .data(smoker.smokeBands(3))
+      .data(
+        smoker.smokeBands([
+          [0.45, 0.55],
+          [0.4, 0.6],
+          [0.35, 0.65],
+          [0.3, 0.7],
+          [0.25, 0.75],
+          [0.2, 0.8],
+          [0.15, 0.85],
+          [0.1, 0.9],
+          [0.05, 0.95],
+          [0, 1],
+        ])
+      )
       .enter()
       .append("path")
-      .classed("smokeBand", true)
-      .attr("fill", "rgba(0,0,0,.18)")
+      .attr("fill", "rgba(30,50,50,.1)")
       .attr("d", d => d)
 
     g.selectAll("path.midLine")
       .data(smoker.line(0.5))
       .enter()
       .append("path")
-      .classed("midLine", true)
-      .attr("stroke", "#cc0000")
-      .attr("stroke-width", 2)
+      .attr("stroke", "#0099ff")
+      .attr("stroke-width", 1)
       .attr("fill", "transparent")
       .attr("d", d => d)
-
-    g.selectAll("circle.errMarker")
-      .data(errors)
-      .enter()
-      .append("circle")
-      .attr("cx", d => d.x)
-      .attr("cy", d => 8 + d.errPos * 8.5)
-      .attr("r", 4)
-      .attr("fill", "#f30")
   </script>
 </html>

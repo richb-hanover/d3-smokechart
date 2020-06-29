@@ -4,7 +4,10 @@ import test from "tape"
 
 test("Bands", t => {
   const bands = calculateSmokeBands([1, 2, 4, 10], 2)
-  console.log(bands)
+  t.deepEqual(bands, [
+    [1, 10],
+    [2, 6],
+  ])
   t.end()
 })
 

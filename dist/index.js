@@ -17,7 +17,7 @@ const smokeAreaConfig = [
     [[0, 1], [.1, .9], [.2, .8], [.3, .7], [.4, .6]]
 ];
 export const calculateSmokeBands = (v, bands) => {
-    const bandKind = smokeAreaConfig[bands];
+    const bandKind = Array.isArray(bands) ? bands : smokeAreaConfig[bands];
     return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)]);
 };
 const flameAreaConfig = [
@@ -34,6 +34,7 @@ export const Smokechart = (smokeData, opts) => {
         scaleY: scaleLinear(),
     };
     let data = [];
+    let errs = [];
     let classSuffix = Math.floor(Math.random() * 100000);
     const smoke = (smokeData, opts) => {
         if (smokeData && !Array.isArray(smokeData)) {
@@ -50,6 +51,12 @@ export const Smokechart = (smokeData, opts) => {
     smoke.data = (smokeData) => {
         if (smokeData) {
             data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b));
+            errs = smokeData.map(arr => {
+                return {
+                    errors: [...arr.filter(n => isNaN(n))].length,
+                    count: arr.length,
+                };
+            });
             return smoke;
         }
         return data;
@@ -88,8 +95,8 @@ export const Smokechart = (smokeData, opts) => {
     };
     smoke.line = (q = 0.5) => {
         const l = line()
-            .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-            .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]));
+            .x(d => props.scaleX(d[0]))
+            .y(d => props.scaleY(d[1]));
         const quantileData = data.reduce((reslt, values, idx) => {
             const p = quantile(values, q);
             return [...reslt, [idx - 0.5, p], [idx + 0.5, p]];
@@ -98,8 +105,8 @@ export const Smokechart = (smokeData, opts) => {
     };
     smoke.smokeBands = (bCount = 2) => {
         const l = line()
-            .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-            .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]));
+            .x(d => props.scaleX(d[0]))
+            .y(d => props.scaleY(d[1]));
         const bands = data.reduce((reslt, values, idx) => {
             const bandData = calculateSmokeBands(values, bCount);
             const x = idx - 0.5;
@@ -113,19 +120,9 @@ export const Smokechart = (smokeData, opts) => {
         }, []);
         return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""));
     };
-    smoke.countErrors = (probeCount = -1) => {
-        const values = data.map(list => list.length);
-        const desired = probeCount >= 0 ? probeCount : Math.max(...values);
-        const underCount = values.map(ln => (desired > ln ? desired - ln : 0));
-        return underCount.reduce((ret, under, idx) => {
-            if (under > 0) {
-                const elems = [];
-                const x = props.scaleX ? props.scaleX(idx) : idx;
-                for (let errPos = 0; errPos < under; errPos++)
-                    elems.push({ x, errPos });
-                return [...ret, ...elems];
-            }
-            return ret;
+    smoke.countErrors = () => {
+        return errs.reduce((reslt, { errors, count }, xPos) => {
+            return errors > 0 && count > 0 ? [...reslt, { errors, count, xPos }] : reslt;
         }, []);
     };
     smoke.chart = (selection, args) => {
@@ -136,7 +133,7 @@ export const Smokechart = (smokeData, opts) => {
                 .enter()
                 .append("path")
                 .classed("smokechart-band", true)
-                .attr("fill", "rgba(0,0,0,0.18)")
+                .attr("fill", (args === null || args === void 0 ? void 0 : args.bandsColor) || "rgba(0,0,0,0.18)")
                 .attr("d", (d) => d);
         }
         selection
@@ -145,27 +142,30 @@ export const Smokechart = (smokeData, opts) => {
             .enter()
             .append("path")
             .classed("smokechart-line", true)
-            .attr("stroke", "#ff0000")
-            .attr("stroke-width", 1.1)
+            .attr("shape-rendering", "crispEdges")
+            .attr("stroke", (args === null || args === void 0 ? void 0 : args.lineColor) || "#ff0000")
+            .attr("stroke-width", (args === null || args === void 0 ? void 0 : args.lineWidth) || 2)
             .attr("fill", "transparent")
             .attr("d", (d) => d);
-        if (args === null || args === void 0 ? void 0 : args.errors) {
-            const errors = smoke.countErrors() || [];
-            if (errors.length) {
-                let r = props.scaleX(0.25) - props.scaleX(0);
-                if (r < 2) {
-                    r = 2;
+        const eRadius = (args === null || args === void 0 ? void 0 : args.errorRadius) || 0;
+        if (eRadius > 0) {
+            const paths = smoke.countErrors().map(({ errors, count, xPos }) => {
+                if (errors > 0 && count > 0) {
+                    const startX = props.scaleX(xPos);
+                    const startY = 1;
+                    const alpha = (Math.PI * 2 * errors) / count;
+                    const endX = eRadius * Math.sin(alpha) + startX;
+                    const endY = eRadius * Math.cos(alpha + Math.PI) + startY + eRadius;
+                    return `M ${startX},${startY + eRadius} v-${eRadius} A ${eRadius},${eRadius} 0,0,1 ${endX},${endY} Z`;
                 }
-                selection
-                    .selectAll("circle.smokechart-baseline" + classSuffix)
-                    .data(errors)
-                    .enter()
-                    .append("circle")
-                    .attr("cx", (d) => d.x)
-                    .attr("cy", (d) => r + d.errPos * r * 2.2)
-                    .attr("r", r)
-                    .attr("fill", "#f30");
-            }
+            });
+            selection
+                .selectAll("path.smokechart-errs")
+                .data([paths.join(" ")])
+                .enter()
+                .append("path")
+                .attr("fill", "#f30")
+                .attr("d", (d) => d);
         }
     };
     return smoke(smokeData, opts);
