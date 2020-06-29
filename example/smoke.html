@@ -59,16 +59,29 @@
       lineColor: "rgb(0,100,0)",
     })
 
-    // manual step-by-step rendering example:
+    // manual step-by-step rendering example with custom bands choice:
 
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
     const g = test2.append("g")
     g.selectAll("path.smokeBand")
-      .data(smoker.smokeBands(2))
+      .data(
+        smoker.smokeBands([
+          [0.45, 0.55],
+          [0.4, 0.6],
+          [0.35, 0.65],
+          [0.3, 0.7],
+          [0.25, 0.75],
+          [0.2, 0.8],
+          [0.15, 0.85],
+          [0.1, 0.9],
+          [0.05, 0.95],
+          [0, 1],
+        ])
+      )
       .enter()
       .append("path")
       .classed("smokeBand", true)
-      .attr("fill", "rgba(0,0,0,.4)")
+      .attr("fill", "rgba(30,50,50,.1)")
       .attr("d", d => d)
 
     g.selectAll("path.midLine")

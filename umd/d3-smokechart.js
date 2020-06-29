@@ -21,7 +21,7 @@
         [[0, 1], [.1, .9], [.2, .8], [.3, .7], [.4, .6]]
     ];
     const calculateSmokeBands = (v, bands) => {
-        const bandKind = smokeAreaConfig[bands];
+        const bandKind = Array.isArray(bands) ? bands : smokeAreaConfig[bands];
         return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)]);
     };
     const Smokechart = (smokeData, opts) => {

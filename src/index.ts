@@ -12,7 +12,7 @@ export interface SmokechartProps {
 
 export interface SmokechartArgs {
   mode?: "smoke" | "flame"
-  bands?: 0 | 1 | 2 | 3 | 4 | 5
+  bands?: 0 | 1 | 2 | 3 | 4 | 5 | Array<[number, number]>
   errorRadius?: number
   bandsColor?: string
   lineColor?: string
@@ -38,8 +38,8 @@ const smokeAreaConfig: Array<Array<[number, number]>> = [
   [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ] // 5
 ]
 
-export const calculateSmokeBands = (v: SmokeProbeList, bands: 0 | 1 | 2 | 3 | 4 | 5) => {
-  const bandKind = smokeAreaConfig[bands]
+export const calculateSmokeBands = (v: SmokeProbeList, bands: 0 | 1 | 2 | 3 | 4 | 5 | Array<[number, number]>) => {
+  const bandKind = Array.isArray(bands) ? bands : smokeAreaConfig[bands]
   return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
 }
 
@@ -151,7 +151,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /** obj().smokeBands(N) returns array of shapes to draw as "smoke bands" */
-  smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 = 2) => {
+  smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 | Array<[number, number]> = 2) => {
     const l = line<[number, number]>()
       .x(d => props.scaleX(d[0]))
       .y(d => props.scaleY(d[1]))
