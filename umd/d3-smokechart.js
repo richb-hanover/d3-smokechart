@@ -30,6 +30,7 @@
             scaleY: d3Scale.scaleLinear(),
         };
         let data = [];
+        let errs = [];
         let classSuffix = Math.floor(Math.random() * 100000);
         const smoke = (smokeData, opts) => {
             if (smokeData && !Array.isArray(smokeData)) {
@@ -46,6 +47,12 @@
         smoke.data = (smokeData) => {
             if (smokeData) {
                 data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b));
+                errs = smokeData.map(arr => {
+                    return {
+                        errors: [...arr.filter(n => isNaN(n))].length,
+                        count: arr.length,
+                    };
+                });
                 return smoke;
             }
             return data;
@@ -84,8 +91,8 @@
         };
         smoke.line = (q = 0.5) => {
             const l = d3Shape.line()
-                .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-                .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]));
+                .x(d => props.scaleX(d[0]))
+                .y(d => props.scaleY(d[1]));
             const quantileData = data.reduce((reslt, values, idx) => {
                 const p = quantile(values, q);
                 return [...reslt, [idx - 0.5, p], [idx + 0.5, p]];
@@ -94,8 +101,8 @@
         };
         smoke.smokeBands = (bCount = 2) => {
             const l = d3Shape.line()
-                .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-                .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]));
+                .x(d => props.scaleX(d[0]))
+                .y(d => props.scaleY(d[1]));
             const bands = data.reduce((reslt, values, idx) => {
                 const bandData = calculateSmokeBands(values, bCount);
                 const x = idx - 0.5;
@@ -109,20 +116,8 @@
             }, []);
             return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""));
         };
-        smoke.countErrors = (probeCount = -1) => {
-            const values = data.map(list => list.length);
-            const desired = probeCount >= 0 ? probeCount : Math.max(...values);
-            const underCount = values.map(ln => (desired > ln ? desired - ln : 0));
-            return underCount.reduce((ret, under, idx) => {
-                if (under > 0) {
-                    const elems = [];
-                    const x = props.scaleX ? props.scaleX(idx) : idx;
-                    for (let errPos = 0; errPos < under; errPos++)
-                        elems.push({ x, errPos });
-                    return [...ret, ...elems];
-                }
-                return ret;
-            }, []);
+        smoke.countErrors = () => {
+            return errs.map(v => v.errors);
         };
         smoke.chart = (selection, args) => {
             if (args === null || args === void 0 ? void 0 : args.bands) {
@@ -145,23 +140,24 @@
                 .attr("stroke-width", 1.1)
                 .attr("fill", "transparent")
                 .attr("d", (d) => d);
-            if (args === null || args === void 0 ? void 0 : args.errors) {
-                const errors = smoke.countErrors() || [];
-                if (errors.length) {
-                    let r = props.scaleX(0.25) - props.scaleX(0);
-                    if (r < 2) {
-                        r = 2;
+            const eRadius = (args === null || args === void 0 ? void 0 : args.errorRadius) || 0;
+            if (eRadius > 0) {
+                const paths = errs.map(({ errors, count }, pos) => {
+                    if (errors > 0 && count > 0) {
+                        const xPos = props.scaleX(pos);
+                        const alpha = (Math.PI * 2 * errors) / count;
+                        const endX = eRadius * Math.sin(alpha) + xPos;
+                        const endY = eRadius * Math.cos(alpha + Math.PI) + 1 + eRadius;
+                        return `M ${xPos},${eRadius + 1} v-${eRadius} A ${eRadius},${eRadius} 0,0,1 ${endX},${endY} Z`;
                     }
-                    selection
-                        .selectAll("circle.smokechart-baseline" + classSuffix)
-                        .data(errors)
-                        .enter()
-                        .append("circle")
-                        .attr("cx", (d) => d.x)
-                        .attr("cy", (d) => r + d.errPos * r * 2.2)
-                        .attr("r", r)
-                        .attr("fill", "#f30");
-                }
+                });
+                selection
+                    .selectAll("path.smokechart-errs")
+                    .data([paths.join(" ")])
+                    .enter()
+                    .append("path")
+                    .attr("fill", "#f30")
+                    .attr("d", (d) => d);
             }
         };
         return smoke(smokeData, opts);

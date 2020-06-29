@@ -1,6 +1,5 @@
 import { ScaleLinear, scaleLinear } from "d3-scale"
-
-import { line } from "d3-shape"
+import { arc, line } from "d3-shape"
 
 export type SmokeProbeList = number[]
 export type SmokeData = SmokeProbeList[]
@@ -13,7 +12,7 @@ export interface SmokechartProps {
 export interface SmokechartArgs {
   mode?: "smoke" | "flame"
   bands?: 0 | 1 | 2 | 3 | 4 | 5
-  errors?: boolean
+  errorRadius?: number
 }
 
 const quantile = (probes: SmokeProbeList, q: number) => {
@@ -61,6 +60,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     scaleY: scaleLinear(),
   }
   let data: SmokeData = []
+  let errs: Array<{ errors: number; count: number }> = []
   let classSuffix = Math.floor(Math.random() * 100000)
 
   const smoke = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
@@ -82,6 +82,12 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     if (smokeData) {
       // clone data while sorting each row
       data = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b))
+      errs = smokeData.map(arr => {
+        return {
+          errors: [...arr.filter(n => isNaN(n))].length,
+          count: arr.length,
+        }
+      })
       return smoke
     }
     return data
@@ -129,8 +135,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    */
   smoke.line = (q: number = 0.5) => {
     const l = line<[number, number]>()
-      .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-      .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+      .x(d => props.scaleX(d[0]))
+      .y(d => props.scaleY(d[1]))
 
     const quantileData = data.reduce<Array<[number, number]>>((reslt, values, idx) => {
       const p = quantile(values, q)
@@ -143,8 +149,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   /** obj().smokeBands(N) returns array of shapes to draw as "smoke bands" */
   smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 = 2) => {
     const l = line<[number, number]>()
-      .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-      .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+      .x(d => props.scaleX(d[0]))
+      .y(d => props.scaleY(d[1]))
 
     const bands = data.reduce<string[][]>((reslt, values, idx) => {
       const bandData = calculateSmokeBands(values, bCount)
@@ -167,26 +173,10 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /**
-   * obj.countErrors(probeCount) returns number of probes missing in each of the listed probes
-   * probeCount defaults to max number of probes within list of elements given in data
-   *
-   * Returns list of {x, errPos} tuples where errPos grows from 0 to probeCount for each set of probes in data
+   * obj.countErrors() returns number of probes NaN in each probe
    */
-  smoke.countErrors = (probeCount: number = -1) => {
-    const values = data.map(list => list.length)
-    const desired = probeCount >= 0 ? probeCount : Math.max(...values)
-    // note that the err count could not be below 0
-    const underCount = values.map(ln => (desired > ln ? desired - ln : 0))
-    // list above is positioned errcount... let's transform it to desired format
-    return underCount.reduce<Array<{ x: number; errPos: number }>>((ret, under, idx) => {
-      if (under > 0) {
-        const elems = []
-        const x = props.scaleX ? props.scaleX(idx) : idx
-        for (let errPos = 0; errPos < under; errPos++) elems.push({ x, errPos })
-        return [...ret, ...elems]
-      }
-      return ret
-    }, [])
+  smoke.countErrors = () => {
+    return errs.map(v => v.errors)
   }
 
   /** obj.smokechart renders fully functional chart */
@@ -213,23 +203,25 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .attr("fill", "transparent")
       .attr("d", (d: string) => d)
 
-    if (args?.errors) {
-      const errors = smoke.countErrors() || []
-      if (errors.length) {
-        let r = props.scaleX(0.25) - props.scaleX(0)
-        if (r < 2) {
-          r = 2
+    const eRadius = args?.errorRadius || 0
+    if (eRadius > 0) {
+      const paths = errs.map(({ errors, count }, pos) => {
+        if (errors > 0 && count > 0) {
+          const xPos = props.scaleX(pos)
+          const alpha = (Math.PI * 2 * errors) / count
+          const endX = eRadius * Math.sin(alpha) + xPos
+          const endY = eRadius * Math.cos(alpha + Math.PI) + 1 + eRadius
+          return `M ${xPos},${eRadius + 1} v-${eRadius} A ${eRadius},${eRadius} 0,0,1 ${endX},${endY} Z`
         }
-        selection
-          .selectAll("circle.smokechart-baseline" + classSuffix)
-          .data(errors)
-          .enter()
-          .append("circle")
-          .attr("cx", (d: { x: number }) => d.x)
-          .attr("cy", (d: { errPos: number }) => r + d.errPos * r * 2.2)
-          .attr("r", r)
-          .attr("fill", "#f30")
-      }
+      })
+
+      selection
+        .selectAll("path.smokechart-errs")
+        .data([paths.join(" ")])
+        .enter()
+        .append("path")
+        .attr("fill", "#f30")
+        .attr("d", (d: string) => d)
     }
   }
 
