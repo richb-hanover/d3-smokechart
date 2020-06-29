@@ -121,7 +121,9 @@ export const Smokechart = (smokeData, opts) => {
         return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""));
     };
     smoke.countErrors = () => {
-        return errs.map(v => v.errors);
+        return errs.reduce((reslt, { errors, count }, xPos) => {
+            return errors > 0 && count > 0 ? [...reslt, { errors, count, xPos }] : reslt;
+        }, []);
     };
     smoke.chart = (selection, args) => {
         if (args === null || args === void 0 ? void 0 : args.bands) {
@@ -147,13 +149,14 @@ export const Smokechart = (smokeData, opts) => {
             .attr("d", (d) => d);
         const eRadius = (args === null || args === void 0 ? void 0 : args.errorRadius) || 0;
         if (eRadius > 0) {
-            const paths = errs.map(({ errors, count }, pos) => {
+            const paths = smoke.countErrors().map(({ errors, count, xPos }) => {
                 if (errors > 0 && count > 0) {
-                    const xPos = props.scaleX(pos);
+                    const startX = props.scaleX(xPos);
+                    const startY = 1;
                     const alpha = (Math.PI * 2 * errors) / count;
-                    const endX = eRadius * Math.sin(alpha) + xPos;
-                    const endY = eRadius * Math.cos(alpha + Math.PI) + 1 + eRadius;
-                    return `M ${xPos},${eRadius + 1} v-${eRadius} A ${eRadius},${eRadius} 0,0,1 ${endX},${endY} Z`;
+                    const endX = eRadius * Math.sin(alpha) + startX;
+                    const endY = eRadius * Math.cos(alpha + Math.PI) + startY + eRadius;
+                    return `M ${startX},${startY + eRadius} v-${eRadius} A ${eRadius},${eRadius} 0,0,1 ${endX},${endY} Z`;
                 }
             });
             selection

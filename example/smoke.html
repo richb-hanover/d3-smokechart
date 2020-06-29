@@ -62,7 +62,26 @@
     // manual step-by-step rendering example with custom bands choice:
 
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
+
+    // custom way of adding errors first to create "color background stripes"
+    const errors = smoker.countErrors() // array of {errors, count} for each X
+
     const g = test2.append("g")
+    g.selectAll("rect.errorBands")
+      .data(errors)
+      .enter()
+      .append("rect")
+      .attr("fill", function (d) {
+        return `rgba(255, 0,0,${d.errors / d.count})`
+      })
+      .attr("x", function (d) {
+        return scaleX(d.xPos - 0.5)
+      })
+      .attr("height", 300)
+      .attr("width", function (d) {
+        return scaleX(d.xPos + 0.5) - scaleX(d.xPos - 0.5)
+      })
+
     g.selectAll("path.smokeBand")
       .data(
         smoker.smokeBands([
@@ -80,7 +99,6 @@
       )
       .enter()
       .append("path")
-      .classed("smokeBand", true)
       .attr("fill", "rgba(30,50,50,.1)")
       .attr("d", d => d)
 
@@ -88,9 +106,8 @@
       .data(smoker.line(0.5))
       .enter()
       .append("path")
-      .classed("midLine", true)
-      .attr("stroke", "#ff5500")
-      .attr("stroke-width", 2)
+      .attr("stroke", "#0099ff")
+      .attr("stroke-width", 1)
       .attr("fill", "transparent")
       .attr("d", d => d)
   </script>

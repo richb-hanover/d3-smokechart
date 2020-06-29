@@ -13,6 +13,11 @@ export interface SmokechartArgs {
     lineColor?: string;
     lineWidth?: number;
 }
+declare type countErrorsType = Array<{
+    errors: number;
+    count: number;
+    xPos: number;
+}>;
 export declare const calculateSmokeBands: (v: SmokeProbeList, bands: 0 | 1 | 2 | 3 | 4 | 5 | Array<[number, number]>) => [number, number][];
 export declare const Smokechart: (smokeData?: SmokeData | Partial<SmokechartProps> | undefined, opts?: Partial<SmokechartProps> | undefined) => {
     (smokeData?: SmokeData | Partial<SmokechartProps> | undefined, opts?: Partial<SmokechartProps> | undefined): any;
@@ -22,6 +27,7 @@ export declare const Smokechart: (smokeData?: SmokeData | Partial<SmokechartProp
     scaleY(newScale?: ScaleLinear<number, number> | undefined): ScaleLinear<number, number> | any;
     line(q?: number): (string | null)[];
     smokeBands(bCount?: 1 | 2 | 3 | 4 | 5 | Array<[number, number]>): string[];
-    countErrors(): number[];
+    countErrors(): countErrorsType;
     chart(selection: any, args?: SmokechartArgs | undefined): void;
 };
+export {};
