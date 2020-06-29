@@ -137,7 +137,7 @@
                 .append("path")
                 .classed("smokechart-line", true)
                 .attr("stroke", "#ff0000")
-                .attr("stroke-width", 1.1)
+                .attr("stroke-width", 1)
                 .attr("fill", "transparent")
                 .attr("d", (d) => d);
             const eRadius = (args === null || args === void 0 ? void 0 : args.errorRadius) || 0;

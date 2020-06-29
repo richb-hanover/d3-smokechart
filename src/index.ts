@@ -199,7 +199,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .append("path")
       .classed("smokechart-line", true)
       .attr("stroke", "#ff0000")
-      .attr("stroke-width", 1.1)
+      .attr("stroke-width", 1)
       .attr("fill", "transparent")
       .attr("d", (d: string) => d)
 
