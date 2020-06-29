@@ -140,6 +140,7 @@ export const Smokechart = (smokeData, opts) => {
             .enter()
             .append("path")
             .classed("smokechart-line", true)
+            .attr("shape-rendering", "crispEdges")
             .attr("stroke", "#ff0000")
             .attr("stroke-width", 1)
             .attr("fill", "transparent")
