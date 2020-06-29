@@ -1,5 +1,6 @@
 import { ScaleLinear, scaleLinear } from "d3-scale"
-import { arc, line } from "d3-shape"
+
+import { line } from "d3-shape"
 
 export type SmokeProbeList = number[]
 export type SmokeData = SmokeProbeList[]
@@ -13,6 +14,9 @@ export interface SmokechartArgs {
   mode?: "smoke" | "flame"
   bands?: 0 | 1 | 2 | 3 | 4 | 5
   errorRadius?: number
+  bandsColor?: string
+  lineColor?: string
+  lineWidth?: number
 }
 
 const quantile = (probes: SmokeProbeList, q: number) => {
@@ -188,7 +192,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
         .enter()
         .append("path")
         .classed("smokechart-band", true)
-        .attr("fill", "rgba(0,0,0,0.18)")
+        .attr("fill", args?.bandsColor || "rgba(0,0,0,0.18)")
         .attr("d", (d: string) => d)
     }
 
@@ -199,8 +203,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .append("path")
       .classed("smokechart-line", true)
       .attr("shape-rendering", "crispEdges")
-      .attr("stroke", "#ff0000")
-      .attr("stroke-width", 1)
+      .attr("stroke", args?.lineColor || "#ff0000")
+      .attr("stroke-width", args?.lineWidth || 2)
       .attr("fill", "transparent")
       .attr("d", (d: string) => d)
 

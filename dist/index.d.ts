@@ -9,6 +9,9 @@ export interface SmokechartArgs {
     mode?: "smoke" | "flame";
     bands?: 0 | 1 | 2 | 3 | 4 | 5;
     errorRadius?: number;
+    bandsColor?: string;
+    lineColor?: string;
+    lineWidth?: number;
 }
 export declare const calculateSmokeBands: (v: SmokeProbeList, bands: 0 | 1 | 2 | 3 | 4 | 5) => [number, number][];
 export declare const Smokechart: (smokeData?: SmokeData | Partial<SmokechartProps> | undefined, opts?: Partial<SmokechartProps> | undefined) => {

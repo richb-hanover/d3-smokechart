@@ -127,7 +127,7 @@
                     .enter()
                     .append("path")
                     .classed("smokechart-band", true)
-                    .attr("fill", "rgba(0,0,0,0.18)")
+                    .attr("fill", (args === null || args === void 0 ? void 0 : args.bandsColor) || "rgba(0,0,0,0.18)")
                     .attr("d", (d) => d);
             }
             selection
@@ -137,8 +137,8 @@
                 .append("path")
                 .classed("smokechart-line", true)
                 .attr("shape-rendering", "crispEdges")
-                .attr("stroke", "#ff0000")
-                .attr("stroke-width", 1)
+                .attr("stroke", (args === null || args === void 0 ? void 0 : args.lineColor) || "#ff0000")
+                .attr("stroke-width", (args === null || args === void 0 ? void 0 : args.lineWidth) || 2)
                 .attr("fill", "transparent")
                 .attr("d", (d) => d);
             const eRadius = (args === null || args === void 0 ? void 0 : args.errorRadius) || 0;

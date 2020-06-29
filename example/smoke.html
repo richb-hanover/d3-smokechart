@@ -47,17 +47,28 @@
 
     const smoker = d3.Smokechart({ scaleX, scaleY }).data(smokeData).adjustScaleRange()
 
+    // library's all-in-one example:
+
     const test1 = d3.select("#smokeTest1").append("svg").attr("width", 1050).attr("height", 300)
-    test1.append("g").call(smoker.chart, { mode: "smoke", bands: 5, errorRadius: 10 })
+    test1.append("g").call(smoker.chart, {
+      mode: "smoke",
+      bands: 5,
+      errorRadius: 10,
+      lineWidth: 1,
+      bandsColor: "rgba(0,0,0,.075)",
+      lineColor: "rgb(0,100,0)",
+    })
+
+    // manual step-by-step rendering example:
 
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
     const g = test2.append("g")
     g.selectAll("path.smokeBand")
-      .data(smoker.smokeBands(3))
+      .data(smoker.smokeBands(2))
       .enter()
       .append("path")
       .classed("smokeBand", true)
-      .attr("fill", "rgba(0,0,0,.18)")
+      .attr("fill", "rgba(0,0,0,.4)")
       .attr("d", d => d)
 
     g.selectAll("path.midLine")
@@ -65,18 +76,9 @@
       .enter()
       .append("path")
       .classed("midLine", true)
-      .attr("stroke", "#cc0000")
+      .attr("stroke", "#ff5500")
       .attr("stroke-width", 2)
       .attr("fill", "transparent")
       .attr("d", d => d)
-
-    // g.selectAll("circle.errMarker")
-    //   .data(errors)
-    //   .enter()
-    //   .append("circle")
-    //   .attr("cx", d => d.x)
-    //   .attr("cy", d => 8 + d.errPos * 8.5)
-    //   .attr("r", 4)
-    //   .attr("fill", "#f30")
   </script>
 </html>
