@@ -18,9 +18,9 @@ export interface SmokechartArgs {
 
 const quantile = (samples: SmokeSampleList, q: number) => {
   if (q < 0 || q > 1 || isNaN(q)) throw new Error(`Unable to calculate ${q} quantile`)
-  var alq = (samples.length - 1) * q
-  var idx = Math.floor(alq)
-  var diff = alq - idx
+  const alq = (samples.length - 1) * q
+  const idx = Math.floor(alq)
+  const diff = alq - idx
 
   return diff < 0.001 ? samples[idx] : Math.floor(samples[idx] * (1 - diff) + samples[idx + 1] * diff + 0.5)
 }
@@ -40,15 +40,25 @@ export const calculateSmokeBands = (v: SmokeSampleList, bands: 0 | 1 | 2 | 3 | 4
   return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
 }
 
+/**
+ * calculateSmokeBandRange - take the ranges given by the caller to compute the smoke bands
+ *
+ * @param v
+ * @param bands
+ */
+export const calculateSmokeBandRange = (v: SmokeSampleList, bands: (number[])[]) => {
+  return bands.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
+}
+
 // prettier-ignore
-const flameAreaConfig = [
-  [],                       // 0
-  [ .5 ],                   // 1
-  [ .5, .75 ],              // 2
-  [ .5, .7, .9 ],           // 3
-  [ .4, .55, .7, .85 ],     // 4
-  [ .5, .6, .7, .8, .9 ]    // 5
-]
+// const flameAreaConfig = [
+//   [],                       // 0
+//   [ .5 ],                   // 1
+//   [ .5, .75 ],              // 2
+//   [ .5, .7, .9 ],           // 3
+//   [ .4, .55, .7, .85 ],     // 4
+//   [ .5, .6, .7, .8, .9 ]    // 5
+// ]
 
 /**
  * SmokeChart returns class responsible for building Smoke Charts.
@@ -81,7 +91,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /**
-   * obj.data() initializes smokechart's matrix of samples, returning chainable object or returns current data if arg was omitted
+   * obj.data() initializes the smokechart matrix of samples, returning chainable object or returns current data if arg was omitted
    */
   smoke.data = (smokeData?: SmokeData) => {
     if (smokeData) {
@@ -111,7 +121,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   }
 
   /**
-   * obj.scaleX() and obj.scaleY() are getter/settters for smokechart prop elements
+   * obj.scaleX() and obj.scaleY() are getter/setters for smokechart prop elements
    */
   smoke.scaleX = (newScale?: ScaleLinear<number, number>) => {
     if (newScale) {
@@ -137,9 +147,9 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
       .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
 
-    const quantileData = cleanedData.reduce<Array<[number, number]>>((reslt, values, idx) => {
+    const quantileData = cleanedData.reduce<Array<[number, number]>>((result, values, idx) => {
       const p = quantile(values, q)
-      return [...reslt, [idx - 0.5, p], [idx + 0.5, p]]
+      return [...result, [idx - 0.5, p], [idx + 0.5, p]]
     }, [])
 
     return [l(quantileData)]
@@ -151,7 +161,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
       .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
 
-    const bands = cleanedData.reduce<string[][]>((reslt, values, idx) => {
+    const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
       const bandData = calculateSmokeBands(values, bCount)
       const x = idx - 0.5
       const bandLines = bandData.map(
@@ -163,7 +173,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
             [x + 1, y0],
           ]) || ""
       )
-      return [...reslt, bandLines]
+      return [...result, bandLines]
     }, [] as string[][])
 
     // each set contains lines for same X value but we best to join
@@ -171,6 +181,39 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
   }
 
+  /**
+   * smokeBandRange - Given a range, returns array of shapes to draw as "smoke bands"
+   * @param ranges
+   * Default range is [ [0,1], [.1,.9], [0.25, 0.75]] ] - therefore display boundaries of:
+   * Min & Max
+   * 10th & 90th percentile (80% of samples in this range)
+   * 25th & 75th percentile (50% of samples in this range)
+   */
+  smoke.smokeBandRange = (ranges:(number[])[] = [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ]) => {
+    const l = line<[number, number]>()
+        .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
+        .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+
+    const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
+      const bandData = calculateSmokeBandRange(values, ranges)
+
+      const x = idx - 0.5
+      const bandLines = bandData.map(
+          ([y0, y1]) =>
+              l([
+                [x, y0],
+                [x, y1],
+                [x + 1, y1],
+                [x + 1, y0],
+              ]) || ""
+      )
+      return [...result, bandLines]
+    }, [] as string[][])
+
+    // each set contains lines for same X value but we best to join
+    // lines for same color (bands is matrix of [rowIdx][columnIdx])
+    return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
+  }
   /**
    * obj.countErrors(sampleCount) returns number of samples missing in each of the listed samples
    * sampleCount defaults to max number of samples within list of elements given in cleanedData
@@ -182,13 +225,13 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     const desired = sampleCount >= 0 ? sampleCount : Math.max(...values)
     // note that the err count could not be below 0
     const underCount = values.map(ln => (desired > ln ? desired - ln : 0))
-    // list above is positioned errcount... let's transform it to desired format
+    // list above is positioned error count... let's transform it to desired format
     return underCount.reduce<Array<{ x: number; errPos: number }>>((ret, under, idx) => {
       if (under > 0) {
-        const elems = []
+        const elements = []
         const x = props.scaleX ? props.scaleX(idx) : idx
-        for (let errPos = 0; errPos < under; errPos++) elems.push({ x, errPos })
-        return [...ret, ...elems]
+        for (let errPos = 0; errPos < under; errPos++) elements.push({ x, errPos })
+        return [...ret, ...elements]
       }
       return ret
     }, [])

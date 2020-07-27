@@ -14,7 +14,7 @@ Each of these functions returns the class object so they can be chained.
 
 * **smoke(SmokeData, Opts?)** - This function can be called to return the chartable data array.
 
-* **data(Smokedata)** - This function sets the class variable *data* to the input, with each row sorted.
+* **data(Smokedata)** - This function sets the class variable *cleanedData* to the input, with each row sorted.
 It also removes NaN values.
 
 * **adjustScaleRange()** - This function adjusts the X/Y scale input ranges to fit the chart properly

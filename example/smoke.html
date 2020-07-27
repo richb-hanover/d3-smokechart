@@ -94,7 +94,7 @@
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
     const g = test2.append("g")
     g.selectAll("path.smokeBand")
-      .data(smoker.smokeBands(3))
+      .data(smoker.smokeBandRange([ [0, 1], [0.05, 0.95], [0.45, 0.55] ]))
       .enter()
       .append("path")
       .classed("smokeBand", true)
