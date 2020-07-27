@@ -33,8 +33,25 @@ Then navigate to [examples/smoke.html](http://localhost:3000/example/smoke.html)
 
 To run tests and create the UMD bundle suitable for publication:
 ```
-nvm use 14.2.0 # (or other suitable, modern version)
+nvm use 14.2.0 # (or other suitable, modern node version)
 yarn run build
+```
+
+Ran into difficulties creating UMD build with a real Javascript class
+so the following are alternative ways to build 
+(from http://rollupjs.org/guide/en/#quick-start):
+
+For browsers & Node:
+```
+# compile to a <script> to a UMD bundle - supply a *module-name*
+rollup src/smokechart.ts --file umd/smokechart.js --format umd --name Smokechart
+```
+Then use *modulename* . *classname* on the web page as:
+``````
+<script src="http://localhost:3000/umd/smokechart.js"  ></script>
+<script>
+  const newChart = new Smokechart.Smokechart()
+</script>
 ```
 
 ## Functions 
