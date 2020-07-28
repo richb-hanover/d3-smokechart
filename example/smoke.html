@@ -88,9 +88,11 @@
     let height = document.getElementById("smokeTest1").style.height
     let width = document.getElementById("smokeTest1").style.width;
 
+    // Call the built-in method to create the smokechart
     const test1 = d3.select("#smokeTest1").append("svg").attr("width", width).attr("height", height)
     test1.append("g").call(smoker.chart, { mode: "smoke", bands: 5, errors: false })
 
+    // Call individual methods to build the smokechart "by hand"
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
     const g = test2.append("g")
     g.selectAll("path.smokeBand")

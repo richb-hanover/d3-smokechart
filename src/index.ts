@@ -219,6 +219,10 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    * sampleCount defaults to max number of samples within list of elements given in cleanedData
    *
    * Returns list of {x, errPos} tuples where errPos grows from 0 to sampleCount for each set of samples in data
+   *
+   * NOTE: This code implements the understanding that there should be a fixed number
+   *    of samples in a row. It will be replaced by code that counts the number of
+   *    missing samples (e.g., NaN) to tint the smoke.
    */
   smoke.countErrors = (sampleCount: number = -1) => {
     const values = cleanedData.map(list => list.length)
