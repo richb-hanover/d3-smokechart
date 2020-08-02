@@ -2,13 +2,18 @@ import { ScaleLinear, scaleLinear } from "d3-scale"
 
 import { line } from "d3-shape"
 
-export type SmokeSampleList = number[]      // list of measured "data samples"
-export type SmokeData = SmokeSampleList[]   // (changed terminology from "data probes")
+export type HourSamples = number[]      // array of "data samples" measured during an hour
+export type SmokeData = HourSamples[]   // multiple hour's worth of data
 
 export interface SmokechartProps {
   scaleX: ScaleLinear<number, number>
   scaleY: ScaleLinear<number, number>
   percentiles: (number[])[]
+  // smokeColor: string;
+  // smokeTransparency: number;
+  // medianColor: string;
+  // errorColor: string
+  // numStripes: number;
 }
 
 export interface SmokechartArgs {
@@ -17,7 +22,7 @@ export interface SmokechartArgs {
   errors?: boolean
 }
 
-const quantile = (samples: SmokeSampleList, q: number) => {
+const quantile = (samples: HourSamples, q: number) => {
   if (q < 0 || q > 1 || isNaN(q)) throw new Error(`Unable to calculate ${q} quantile`)
   const alq = (samples.length - 1) * q
   const idx = Math.floor(alq)
@@ -42,20 +47,20 @@ const quantile = (samples: SmokeSampleList, q: number) => {
 // }
 
 /**
- * calculateSmokeBands - Use the percentiles to return corresponding samples
- *    at the edges of those percentile ranges
+ * calculateSmokeBounds - Use the percentiles to return corresponding samples
+ *    at the bounds of those percentile ranges
  *    Will be called on each row of the full SmokeData array
  * @param v - samples from one row of the SmokeData
  * @param percentiles
  * @return samples at the edge of each range. For example:
  *  v = [ 0, 5, 10, 15, ... 495, 500 ]
  *  percentiles = [ [0, 1], [0.05, 0.95], [0.45, 0.55] ]
- *  result = [ 0, 500, 50, 450, 125, 375]
+ *  result = [ 0, 500, 50, 450, 125, 375 ]
  *  That is, 0th & 100th percentile; 5th & 95th percentile, and 45th & 55th...
  *  Note: There are three sub-arrays in percentiles,
  *     so there are 3 pairs of values in the result
  */
-export const calculateSmokeBands = (v: SmokeSampleList, percentiles: (number[])[]) => {
+export const calculateSmokeBounds = (v: HourSamples, percentiles: (number[])[]) => {
   return percentiles.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
 }
 
@@ -70,7 +75,7 @@ export const calculateSmokeBands = (v: SmokeSampleList, percentiles: (number[])[
 // ]
 
 /**
- * SmokeChart returns closure responsible for building Smoke Charts.
+ * SmokeChart builds Smoke Charts.
  *
  *
  */
@@ -78,16 +83,36 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   const smokeProps: SmokechartProps = {
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
-    percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ]   // default percentiles
+    percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ]  // default percentiles
+    /* Default percentiles - [ [0,1], [.1,.9], [0.25, 0.75]] ]
+     * therefore display boundaries at:
+     * Min & Max
+     * 10th & 90th percentile (80% of samples are within this range)
+     * 25th & 75th percentile (50% of samples are within this range)
+     */
+    // smokeColor: "#000000",
+    // smokeTransparency: 0.18,
+    // medianColor: "#1976D2", // blue-700
+    // medianColor: "#388E3C", // green-700
+    // errorColor: "#D32F2F",  // red-700
+    // numStripes: 0            // 0 means use number of rows,
+    //                              otherwise inject rows at top to make enough stripes
   }
+
   let cleanedData: SmokeData = []          // class variable to hold The Data (raw samples, sorted, less NaN)
-  let errData: number[] = [];              // class variable to hold %NaN for a row
+  let hourErrs: number[] = [];             // class variable to hold %NaN for each row/hour
+  // let hourMedian: number[] = [];           // class variable to hold median for each row/hour
   let classSuffix = Math.floor(Math.random() * 100000) // random number to append to classname
 
   /**
    * smoke (SmokeData, SmokechartProps)
    * @param smokeData
    * @param opts
+   *
+   * Two ways to call the smoke() function:
+   *   smoke(SmokeData, options) - sets the options from the passed-in options
+   *   smoke(<something that looks like "partial options" - sets the options, clears smokeData)
+   * options are always merged with the existing/default smokeProps
    */
   const smoke = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
     if (smokeData && !Array.isArray(smokeData)) {
@@ -109,7 +134,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       // clone data while sorting each row
       cleanedData = smokeData.map(arr => [...arr.filter(n => !isNaN(n))]
           .sort((a, b) => a - b))
-      errData = [0.5, 1, 0];        // BOGUS Error Data
+      hourErrs = [0.5, 1, 0];        // BOGUS Error Data
       return smoke
     }
     return cleanedData
@@ -176,9 +201,9 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   //     .y(d => (smokeProps.scaleY ? smokeProps.scaleY(d[1]) : d[1]))
   //
   //   const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
-  //     const bandData = calculateSmokeBands(values, bCount)
+  //     const bounds = calculateSmokeBands(values, bCount)
   //     const x = idx - 0.5
-  //     const bandLines = bandData.map(
+  //     const bandLines = bounds.map(
   //       ([y0, y1]) =>
   //         l([
   //           [x, y0],
@@ -198,10 +223,11 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   /**
    * smokeBands - Given a set of percentiles, returns array of shapes to draw as "smoke bands"
    * @param percentiles
-   * Default percentiles - [ [0,1], [.1,.9], [0.25, 0.75]] ] - therefore display boundaries of:
-   * Min & Max
-   * 10th & 90th percentile (80% of samples are within this range)
-   * 25th & 75th percentile (50% of samples are within this range)
+   * @return scaled X/Y values for charting
+   *
+   * This proceeds in two passes:
+   * 1) scan each row of the cleanedData to determine the bounds (sample values at each boundary)
+   * 2) Use those bounds to calculate X/Y for charting (I think???)
    */
   smoke.smokeBands = (percentiles:(number[])[] = smokeProps.percentiles ) => {
     const l = line<[number, number]>()
@@ -209,11 +235,11 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
         .y(d => (smokeProps.scaleY ? smokeProps.scaleY(d[1]) : d[1]))
 
     const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
-      const bandData = calculateSmokeBands(values, percentiles)
-      console.log(`smokeBands: ${bandData}`)
+      const bounds = calculateSmokeBounds(values, percentiles)
+      // console.log(`smokeBounds: ${bounds}`)
 
       const x = idx - 0.5
-      const bandLines = bandData.map(
+      const bandLines = bounds.map(
           ([y0, y1]) =>
               l([
                 [x, y0],
