@@ -8,6 +8,7 @@ export type SmokeData = SmokeSampleList[]   // (changed terminology from "data p
 export interface SmokechartProps {
   scaleX: ScaleLinear<number, number>
   scaleY: ScaleLinear<number, number>
+  percentiles: (number[])[]
 }
 
 export interface SmokechartArgs {
@@ -26,28 +27,36 @@ const quantile = (samples: SmokeSampleList, q: number) => {
 }
 
 // prettier-ignore
-const smokeAreaConfig: Array<Array<[number, number]>> = [
-  [],                                           // 0
-  [ [0,1] ],                                    // 1
-  [ [0,1], [.25,.75] ],                         // 2
-  [ [0,1], [.15,.85], [.3,.7] ],                // 3
-  [ [0,1], [.1,.9], [.2,.8], [.3,.7] ],         // 4
-  [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ] // 5
-]
+// const smokeAreaConfig: Array<Array<[number, number]>> = [
+//   [],                                           // 0
+//   [ [0,1] ],                                    // 1
+//   [ [0,1], [.25,.75] ],                         // 2
+//   [ [0,1], [.15,.85], [.3,.7] ],                // 3
+//   [ [0,1], [.1,.9], [.2,.8], [.3,.7] ],         // 4
+//   [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ] // 5
+// ]
 
-export const calculateSmokeBands = (v: SmokeSampleList, bands: 0 | 1 | 2 | 3 | 4 | 5) => {
-  const bandKind = smokeAreaConfig[bands]
-  return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
-}
+// export const calculateSmokeBands = (v: SmokeSampleList, bands: 0 | 1 | 2 | 3 | 4 | 5) => {
+//   const bandKind = smokeAreaConfig[bands]
+//   return bandKind.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
+// }
 
 /**
- * calculateSmokeBandRange - take the ranges given by the caller to compute the smoke bands
- *
- * @param v
- * @param bands
+ * calculateSmokeBands - Use the percentiles to return corresponding samples
+ *    at the edges of those percentile ranges
+ *    Will be called on each row of the full SmokeData array
+ * @param v - samples from one row of the SmokeData
+ * @param percentiles
+ * @return samples at the edge of each range. For example:
+ *  v = [ 0, 5, 10, 15, ... 495, 500 ]
+ *  percentiles = [ [0, 1], [0.05, 0.95], [0.45, 0.55] ]
+ *  result = [ 0, 500, 50, 450, 125, 375]
+ *  That is, 0th & 100th percentile; 5th & 95th percentile, and 45th & 55th...
+ *  Note: There are three sub-arrays in percentiles,
+ *     so there are 3 pairs of values in the result
  */
-export const calculateSmokeBandRange = (v: SmokeSampleList, bands: (number[])[]) => {
-  return bands.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
+export const calculateSmokeBands = (v: SmokeSampleList, percentiles: (number[])[]) => {
+  return percentiles.map(([from, to]) => [quantile(v, from), quantile(v, to)] as [number, number])
 }
 
 // prettier-ignore
@@ -61,7 +70,7 @@ export const calculateSmokeBandRange = (v: SmokeSampleList, bands: (number[])[])
 // ]
 
 /**
- * SmokeChart returns class responsible for building Smoke Charts.
+ * SmokeChart returns closure responsible for building Smoke Charts.
  *
  *
  */
@@ -69,8 +78,10 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   const props: SmokechartProps = {
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
+    percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ]   // default percentiles
   }
-  let cleanedData: SmokeData = []          // class variable to hold The Data
+  let cleanedData: SmokeData = []          // class variable to hold The Data (raw samples, sorted, less NaN)
+  let errData: number[] = [];              // class variable to hold %NaN for a row
   let classSuffix = Math.floor(Math.random() * 100000) // random number to append to classname
 
   /**
@@ -96,7 +107,9 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   smoke.data = (smokeData?: SmokeData) => {
     if (smokeData) {
       // clone data while sorting each row
-      cleanedData = smokeData.map(arr => [...arr.filter(n => !isNaN(n))].sort((a, b) => a - b))
+      cleanedData = smokeData.map(arr => [...arr.filter(n => !isNaN(n))]
+          .sort((a, b) => a - b))
+      errData = [0.5, 1, 0];        // BOGUS Error Data
       return smoke
     }
     return cleanedData
@@ -155,47 +168,49 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     return [l(quantileData)]
   }
 
-  /** obj().smokeBands(N) returns array of shapes to draw as "smoke bands" */
-  smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 = 2) => {
-    const l = line<[number, number]>()
-      .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-      .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
-
-    const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
-      const bandData = calculateSmokeBands(values, bCount)
-      const x = idx - 0.5
-      const bandLines = bandData.map(
-        ([y0, y1]) =>
-          l([
-            [x, y0],
-            [x, y1],
-            [x + 1, y1],
-            [x + 1, y0],
-          ]) || ""
-      )
-      return [...result, bandLines]
-    }, [] as string[][])
-
-    // each set contains lines for same X value but we best to join
-    // lines for same color (bands is matrix of [rowIdx][columnIdx])
-    return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
-  }
+  // =========== Remove this at some point ============
+  ///** obj().smokeBands(N) returns array of shapes to draw as "smoke bands" */
+  // smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 = 2) => {
+  //   const l = line<[number, number]>()
+  //     .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
+  //     .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+  //
+  //   const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
+  //     const bandData = calculateSmokeBands(values, bCount)
+  //     const x = idx - 0.5
+  //     const bandLines = bandData.map(
+  //       ([y0, y1]) =>
+  //         l([
+  //           [x, y0],
+  //           [x, y1],
+  //           [x + 1, y1],
+  //           [x + 1, y0],
+  //         ]) || ""
+  //     )
+  //     return [...result, bandLines]
+  //   }, [] as string[][])
+  //
+  //   // each set contains lines for same X value but we best to join
+  //   // lines for same color (bands is matrix of [rowIdx][columnIdx])
+  //   return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
+  // }
 
   /**
-   * smokeBandRange - Given a range, returns array of shapes to draw as "smoke bands"
-   * @param ranges
-   * Default range is [ [0,1], [.1,.9], [0.25, 0.75]] ] - therefore display boundaries of:
+   * smokeBands - Given a set of percentiles, returns array of shapes to draw as "smoke bands"
+   * @param percentiles
+   * Default percentiles - [ [0,1], [.1,.9], [0.25, 0.75]] ] - therefore display boundaries of:
    * Min & Max
-   * 10th & 90th percentile (80% of samples in this range)
-   * 25th & 75th percentile (50% of samples in this range)
+   * 10th & 90th percentile (80% of samples are within this range)
+   * 25th & 75th percentile (50% of samples are within this range)
    */
-  smoke.smokeBandRange = (ranges:(number[])[] = [ [0,1], [.1,.9], [.2,.8], [.3,.7], [.4,.6] ]) => {
+  smoke.smokeBands = (percentiles:(number[])[] = SmokechartProps.percentiles ) => {
     const l = line<[number, number]>()
         .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
         .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
 
     const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
-      const bandData = calculateSmokeBandRange(values, ranges)
+      const bandData = calculateSmokeBands(values, percentiles)
+      console.log(`smokeBands: ${bandData}`)
 
       const x = idx - 0.5
       const bandLines = bandData.map(
@@ -214,6 +229,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     // lines for same color (bands is matrix of [rowIdx][columnIdx])
     return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
   }
+
   /**
    * obj.countErrors(sampleCount) returns number of samples missing in each of the listed samples
    * sampleCount defaults to max number of samples within list of elements given in cleanedData
@@ -246,7 +262,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     if (args?.bands) {
       selection
         .selectAll("path.smokechart-band" + classSuffix)
-        .data(smoke.smokeBands(args?.bands))
+        .data(smoke.smokeBands())
         .enter()
         .append("path")
         .classed("smokechart-band", true)

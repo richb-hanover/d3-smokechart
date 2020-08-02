@@ -1,21 +1,12 @@
-# Smokechart class
+# d3.Smokechart
 
-d3.Smokechart is a class that takes Smokedata (array of array of numbers)
-and prepares an intermediate form suitable for handing off
-to the [D3 visualization package.](https:/d3js.org)
-Those numbers might represent response times for a process/device,
-and each array row might contain the times collected during an hour.
-(The original use case for this is to record and display ping
-response times in a network.
-The resulting chart displays vertical bars representing each hour's performance.)
+**d3.Smokechart** takes an array of SmokeData (each row is itself an array of numbers)
+and plots them with the [D3 visualization package.](https:/d3js.org)
+The original use case for a smokechart was to record and display network response times,
+where each row of the array contains the measurements (samples) from an hour's time,
+and the resulting chart displays the range of those samples during that hour.
 
-*Smokechart* constructor is called with an array of Smokedata and some options.
-It returns a function that may be called to provide the data to D3.
-Along the way, it prepares an array (with the same number of rows) suitable for a stacked array display in D3.
-
-Smoke Charts show percentiles.
-The bands show the edges of the percentile boundaries.
-For example:
+The grey colored bands show how tightly clustered the readings are to the median value for the interval (shown in blue.)
 
 ![percentile image](../docs/PercentileBars.png)
 
@@ -24,51 +15,81 @@ Current code specifies bands as array of arrays whose items are
 pairs of numbers, the "outside values" specified first.
 viz, `[ [0, 1], [0.1, 0.9], [0.25, 0.75] ]`
 
-Each vertical stripe shows the *range* of the sample values that are
-within the percentiles specified by the bound.
-For example, the band for `[0.1, 0.9]` shows the samples that are between the
-10th percentile and the 90th percentile of the range.
+Smoke Charts show percentiles.
+Each vertical stripe contains one or more *smoke bands* that mark the *range* of
+the sample values that are within the specified bands.
+For example, a band of `[0.1, 0.9]` marks the minimum and maximum sample values
+that are between the 10th percentile and the 90th percentile of the range.
 
-**Missing Values:** The smokechart is insensitive to the number of data values for each time interval.
-That is, it will accurately display the spread of sample values, no matter how many are present.
+**Missing Values:** The smokechart displays the data samples for each hour, no matter how many samples are present.
 However, it is useful also to indicate the number of "missing" values
 (where, for example, a ping was sent but no response was ever received.)
-This "packet loss" is an orthogonal indication of a network impairment
-(separate from the response times being plotted.)
-The chart can color ("tint") the smoke bands showing the percentage of
-dropped packets/missing values to indicate that there were problems
-unrelated to the reponse times.
+This "packet loss" is an orthogonal indication of a network impairment,
+separate from the response times being plotted.
+The chart uses a red tint for the smoke bands: the intensity of the tint indicates the percentage
+of dropped packets/missing values.
 
-**Parameters & Data:** 
+*(redundant)* In addition, the data samples may have "missing data" which could occur
+if a measurement was attempted, but no data returned.
+(This happens regularly with ping tests - no response returns to the request because of a network outage.)
+The SmokeData array represents these missing values as NaN.
+The Smokechart adds color to the smoke for that hour (default - a red tint)
+representing the percentage of missing data in that row.
+A small percentage of missing values will be unnoticed; significant packet loss will show up strongly.
+
+**Parameters & Data** 
 
 * The SmokeData (raw samples)
-* Bands
-* Smoke color
-* Median color
-* Error color
-* X/Y Bounds
-* Number of vertical stripes
+* Percentiles - numeric bounds of the percentiles that mark edges of smoke bands
+* Smoke Color (default: Black #000000, with varying transparency)
+* Smoke Transparency array: transparency for each smoke band, default 0.18)
+* Median Color (default: Blue-700 #1976D2 or Green-700 #388E3C)
+* Error Color (default: Red-700 #D32F2F)
+* X/Y Bounds for drawing the chart 
+* Number of vertical stripes (0 = draw as many stripes as data rows, otherwise, push additional empty rows onto the beginning of SmokeData to get the desired number of stripes)
+* *Note: Colors drawn from [The Color System](https://material.io/design/color/the-color-system.html#tools-for-picking-colors)*
+
+
 
 **Error Processing:** The simplest way to handle programming errors (such as overlapping ranges, bad data, etc.)
-would be to inject a text() element into the SVG with the error message.
-No exceptions necessary, and the text should make it obvious what the author needs to fix.
+would be to inject a text() element into the D3 SVG with that error message.
+No exceptions are necessary, and the text should make it obvious what the author needs to fix.
 For example: 
 
 * "Cannot plot bands of [ [0,0.5], [0.25, 0.75] ]" (since they overlap)
 * "Cannot plot bands of [ 0, 1, 2 ]" (since it's not a well-formed array of arrays.)
 * "Cannot plot bands of [ [0, 1], 'text' ]" (C'mon...)
 
-**Handling Peculiar Data Situations:** ~~(earlier versions of the document
-envisioned that bounds would not always be in pairs.
-No need to handle this now.)~~
+**Handling Peculiar Data Situations:** What if there are a small number of elements in a row?
 
-**Sanity Checking:**
+* 0 rows ([ ] as smokeData) - "Error: No data provided."
+* 1 row - should just work
+* 0 elements in a row - blank stripe
+* 1 element in a row - draw the median
+* 2 elements in a row - draw the average, darkest band at min/max
+* 3-10 elements in a row - draw middle (median/average) value, darkest band for min/max  
+* all NaN - (1 or more NaN) Error Color drawn at zero
+* N% NaN - tint the smoke with Error Color, tint the median, too
+* 10%+ NaN - color median as Error Color, too
 
-* Does [0.1, 0.9] actually contain the 10th & 90th percentile samples?
+**To-Do/Sanity Checking:**
+
+* Redraw the image at top of this document to match band ranges notation
+* Does [0.1, 0.9] actually indicate the 10th & 90th percentile samples?
 * Are the bands actually drawn correctly, or do they use some computed notion of
 "where they oughta be..." (see d3.quantile(smokeData[2], 0.2) discussion...
+* Why can't the package handle a single row of `[ [1] ]`? Seems to require three rows(?)
+* Remove all APIs that offer # bands, only offer ranges...
+* Use differing opacities for bands (instead of just 0.18)
+* Can X/Y Bounds default to the enclosing div?
 
 ## *Smokechart* Functions
+
+**Smokechart constructor:** is called with an array of Smokedata and some options.
+It returns a function that may be called to provide the data to D3.
+Along the way, it prepares an array (with the same number of rows) suitable for a stacked array display in D3.
+
+
 
 Each of these functions returns the class object so they can be chained.
 
@@ -79,3 +100,4 @@ It also removes NaN values.
 
 * **adjustScaleRange()** - This function adjusts the X/Y scale input ranges to fit the chart properly
 * 
+
