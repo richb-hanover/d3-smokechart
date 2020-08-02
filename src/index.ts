@@ -75,7 +75,7 @@ export const calculateSmokeBands = (v: SmokeSampleList, percentiles: (number[])[
  *
  */
 export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
-  const props: SmokechartProps = {
+  const smokeProps: SmokechartProps = {
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
     percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ]   // default percentiles
@@ -94,7 +94,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       opts = smokeData
       smokeData = undefined
     }
-    if (opts) Object.assign(props, opts)
+    if (opts) Object.assign(smokeProps, opts)
     if (smokeData) smoke.data(smokeData)
 
     classSuffix = Math.floor(Math.random() * 100000)
@@ -119,8 +119,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    * obj.adjustScaleRange() fixes X/Y scale input ranges to fit chart properly, useful to call when data changed
    */
   smoke.adjustScaleRange = () => {
-    if (props.scaleX) props.scaleX.domain([0, cleanedData.length])
-    if (!props.scaleY) return
+    if (smokeProps.scaleX) smokeProps.scaleX.domain([0, cleanedData.length])
+    if (!smokeProps.scaleY) return
     let minY = Infinity
     let maxY = -Infinity
     cleanedData.forEach(arr => {
@@ -129,7 +129,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
         if (arr[arr.length - 1] > maxY) maxY = arr[arr.length - 1]
       }
     })
-    props.scaleY.domain([minY, maxY])
+    smokeProps.scaleY.domain([minY, maxY])
     return smoke // allow chaining by returning original
   }
 
@@ -138,17 +138,17 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    */
   smoke.scaleX = (newScale?: ScaleLinear<number, number>) => {
     if (newScale) {
-      props.scaleX = newScale
+      smokeProps.scaleX = newScale
       return smoke
     }
-    return props.scaleX
+    return smokeProps.scaleX
   }
   smoke.scaleY = (newScale?: ScaleLinear<number, number>) => {
     if (newScale) {
-      props.scaleY = newScale
+      smokeProps.scaleY = newScale
       return smoke
     }
-    return props.scaleY
+    return smokeProps.scaleY
   }
 
   /**
@@ -157,8 +157,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    */
   smoke.line = (q: number = 0.5) => {
     const l = line<[number, number]>()
-      .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-      .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+      .x(d => (smokeProps.scaleX ? smokeProps.scaleX(d[0]) : d[0]))
+      .y(d => (smokeProps.scaleY ? smokeProps.scaleY(d[1]) : d[1]))
 
     const quantileData = cleanedData.reduce<Array<[number, number]>>((result, values, idx) => {
       const p = quantile(values, q)
@@ -172,8 +172,8 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   ///** obj().smokeBands(N) returns array of shapes to draw as "smoke bands" */
   // smoke.smokeBands = (bCount: 1 | 2 | 3 | 4 | 5 = 2) => {
   //   const l = line<[number, number]>()
-  //     .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-  //     .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+  //     .x(d => (smokeProps.scaleX ? smokeProps.scaleX(d[0]) : d[0]))
+  //     .y(d => (smokeProps.scaleY ? smokeProps.scaleY(d[1]) : d[1]))
   //
   //   const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
   //     const bandData = calculateSmokeBands(values, bCount)
@@ -203,10 +203,10 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    * 10th & 90th percentile (80% of samples are within this range)
    * 25th & 75th percentile (50% of samples are within this range)
    */
-  smoke.smokeBands = (percentiles:(number[])[] = SmokechartProps.percentiles ) => {
+  smoke.smokeBands = (percentiles:(number[])[] = smokeProps.percentiles ) => {
     const l = line<[number, number]>()
-        .x(d => (props.scaleX ? props.scaleX(d[0]) : d[0]))
-        .y(d => (props.scaleY ? props.scaleY(d[1]) : d[1]))
+        .x(d => (smokeProps.scaleX ? smokeProps.scaleX(d[0]) : d[0]))
+        .y(d => (smokeProps.scaleY ? smokeProps.scaleY(d[1]) : d[1]))
 
     const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
       const bandData = calculateSmokeBands(values, percentiles)
@@ -249,7 +249,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     return underCount.reduce<Array<{ x: number; errPos: number }>>((ret, under, idx) => {
       if (under > 0) {
         const elements = []
-        const x = props.scaleX ? props.scaleX(idx) : idx
+        const x = smokeProps.scaleX ? smokeProps.scaleX(idx) : idx
         for (let errPos = 0; errPos < under; errPos++) elements.push({ x, errPos })
         return [...ret, ...elements]
       }
@@ -284,7 +284,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     if (args?.errors) {
       const errors = smoke.countErrors() || []
       if (errors.length) {
-        let r = props.scaleX(0.25) - props.scaleX(0)
+        let r = smokeProps.scaleX(0.25) - smokeProps.scaleX(0)
         if (r < 2) {
           r = 2
         }
