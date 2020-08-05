@@ -1,5 +1,4 @@
 import { ScaleLinear, scaleLinear } from "d3-scale"
-
 import { line } from "d3-shape"
 
 export type HourSamples = number[]      // array of "data samples" measured during an hour
@@ -8,9 +7,9 @@ export type SmokeData = HourSamples[]   // multiple hour's worth of data
 export interface SmokechartProps {
   scaleX: ScaleLinear<number, number>
   scaleY: ScaleLinear<number, number>
-  percentiles: (number[])[]
+  percentiles: (number[])[],
   // smokeColor: string;
-  // smokeTransparency: number;
+  smokeOpacity: number[];
   // medianColor: string;
   // errorColor: string
   // numStripes: number;
@@ -22,13 +21,18 @@ export interface SmokechartArgs {
   errors?: boolean
 }
 
+/**
+ * quantile() - given a (sorted) array of samples, return the value at the q'th percentile
+ * @param samples - array of numeric values
+ * @param q - a float between (0 and 1)
+ * @return sample at the qth percentile using the Nearest-Rank algorithm
+ * (See Wikipedia: https://en.wikipedia.org/wiki/Quantile)
+ */
 const quantile = (samples: HourSamples, q: number) => {
   if (q < 0 || q > 1 || isNaN(q)) throw new Error(`Unable to calculate ${q} quantile`)
-  const alq = (samples.length - 1) * q
-  const idx = Math.floor(alq)
-  const diff = alq - idx
-
-  return diff < 0.001 ? samples[idx] : Math.floor(samples[idx] * (1 - diff) + samples[idx + 1] * diff + 0.5)
+  const rank = (samples.length - 1) * q   // compute position/rank of q'th percentile within the array
+  const idx = Math.round(rank)            // idx is rank rounded to an integer
+  return samples[idx]                     // return the sample at that position
 }
 
 // prettier-ignore
@@ -52,7 +56,7 @@ const quantile = (samples: HourSamples, q: number) => {
  *    Will be called on each row of the full SmokeData array
  * @param v - samples from one row of the SmokeData
  * @param percentiles
- * @return samples at the edge of each range. For example:
+ * @return flat array holding samples at the edge of each range. For example:
  *  v = [ 0, 5, 10, 15, ... 495, 500 ]
  *  percentiles = [ [0, 1], [0.05, 0.95], [0.45, 0.55] ]
  *  result = [ 0, 500, 50, 450, 125, 375 ]
@@ -83,20 +87,19 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
   const smokeProps: SmokechartProps = {
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
-    percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ]  // default percentiles
-    /* Default percentiles - [ [0,1], [.1,.9], [0.25, 0.75]] ]
-     * therefore display boundaries at:
+    percentiles: [ [0,1], [.1,.9], [0.25, 0.75] ],  // default percentiles
+    /* This gives boundaries/smokeBands at:
      * Min & Max
      * 10th & 90th percentile (80% of samples are within this range)
      * 25th & 75th percentile (50% of samples are within this range)
      */
     // smokeColor: "#000000",
-    // smokeTransparency: 0.18,
+    smokeOpacity: [0.18],
     // medianColor: "#1976D2", // blue-700
     // medianColor: "#388E3C", // green-700
     // errorColor: "#D32F2F",  // red-700
-    // numStripes: 0            // 0 means use number of rows,
-    //                              otherwise inject rows at top to make enough stripes
+    // numStripes: 0           // 0 means use actual number of rows,
+    //                              otherwise inject rows at front to make enough stripes
   }
 
   let cleanedData: SmokeData = []          // class variable to hold The Data (raw samples, sorted, less NaN)
@@ -236,7 +239,7 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
 
     const bands = cleanedData.reduce<string[][]>((result, values, idx) => {
       const bounds = calculateSmokeBounds(values, percentiles)
-      // console.log(`smokeBounds: ${bounds}`)
+      console.log(`smokeBounds: ${bounds}`) // display the samples at the bounds of the "smoke"
 
       const x = idx - 0.5
       const bandLines = bounds.map(
@@ -281,6 +284,17 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
       }
       return ret
     }, [])
+  }
+
+  /**
+   * fillSmoke() - fill the chart with the proper color smoke
+   * @param d - the area to be filled
+   * @param i - the i'th element - used to retrieve the opacity from smokeOpacity
+   * @returns string "rgba(R,G,B,opacity)"
+   */
+  smoke.fillSmoke = (d: string, i: number) => {
+    return "rgba(0,0,0,0.18)"
+    // return rgb(0,0,0,0.18)
   }
 
   /** obj.smokechart renders fully functional chart */

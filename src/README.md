@@ -1,4 +1,4 @@
-# d3.Smokechart
+# d3.Smokechart Code Narrative
 
 **d3.Smokechart** takes an array of SmokeData (each row is itself an array of numbers)
 and plots them with the [D3 visualization package.](https:/d3js.org)
@@ -37,7 +37,7 @@ The Smokechart adds color to the smoke for that hour (default - a red tint)
 representing the percentage of missing data in that row.
 A small percentage of missing values will be unnoticed; significant packet loss will show up strongly.
 
-**Parameters & Data** 
+**Data & Props** 
 
 * The SmokeData (raw samples)
 * Percentiles - numeric bounds of the percentiles that mark edges of smoke bands
@@ -75,13 +75,34 @@ For example:
 **To-Do/Sanity Checking:**
 
 * Redraw the image at top of this document to match band ranges notation
-* Does [0.1, 0.9] actually indicate the 10th & 90th percentile samples?
-* Are the bands actually drawn correctly, or do they use some computed notion of
-"where they oughta be..." (see d3.quantile(smokeData[2], 0.2) discussion...
-* Why can't the package handle a single row of `[ [1] ]`? Seems to require three rows(?)
+* SmokeProps() to add props (none of the magic stuff)
+* Yes. ~~Does [0.1, 0.9] actually indicate the 10th & 90th percentile samples?~~
+* Yes. ~~Are the bands actually drawn correctly, or do they use some computed notion of
+"where they oughta be..." (see d3.quantile(smokeData[2], 0.2) discussion...~~
+* ~~Why can't the package handle a single row of `[ [1] ]`? Seems to require three rows(?)~~ Seems OK now
 * Remove all APIs that offer # bands, only offer ranges...
 * Use differing opacities for bands (instead of just 0.18)
 * Can X/Y Bounds default to the enclosing div?
+
+## *Smokechart* Data Structures
+
+* **SmokeData** - array of HourSamples - one row per hour
+* **HourSamples** - array of numeric data (or NaN), not necessarily integers, representing samples "from an hour"
+* **cleanData** - SmokeData that has been sorted with NaNs filtered out
+
+The following two-element arrays specify different aspects of the Smokechart data.
+Each of these arrays has the same number of elements. 
+
+* **percentiles** specifies the percentiles that are the bounds for the smoke. [ [0,1], [.25,.75] ] draws two bands, one for min&max values, the second for the 25th through 75th percentiles.
+
+* **smokeBounds** holds the sample values that represent the edges of the specified **percentiles** for each hour's row.
+Elements don't have structure - just N values in a flat array.
+
+* **smokeBands** holds the SVG \<path> information describing the smoke to be drawn for each row.
+Like smokeBounds, the smokeBands are a flat array.
+ 
+
+* 
 
 ## *Smokechart* Functions
 
@@ -89,7 +110,7 @@ For example:
 It returns a function that may be called to provide the data to D3.
 Along the way, it prepares an array (with the same number of rows) suitable for a stacked array display in D3.
 
-
+**quantile(HourSamples, q)** - determine the q'th sample of the array.
 
 Each of these functions returns the class object so they can be chained.
 
@@ -97,6 +118,10 @@ Each of these functions returns the class object so they can be chained.
 
 * **data(Smokedata)** - This function sets the class variable *cleanedData* to the input, with each row sorted.
 It also removes NaN values.
+
+
+-------
+*not sure this is right from here down*
 
 * **adjustScaleRange()** - This function adjusts the X/Y scale input ranges to fit the chart properly
 * 
