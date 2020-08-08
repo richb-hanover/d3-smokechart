@@ -23,14 +23,14 @@ that are between the 10th percentile and the 90th percentile of the range.
 
 **Missing Values:** The smokechart displays the data samples for each hour, no matter how many samples are present.
 However, it is useful also to indicate the number of "missing" values
-(where, for example, a ping was sent but no response was ever received.)
+(where, for example, the application sent a ping but no response returned.)
 This "packet loss" is an orthogonal indication of a network impairment,
-separate from the response times being plotted.
+separate from the measured response times.
 The chart uses a red tint for the smoke bands: the intensity of the tint indicates the percentage
 of dropped packets/missing values.
 
 *(redundant)* In addition, the data samples may have "missing data" which could occur
-if a measurement was attempted, but no data returned.
+when the application attempted a measurement, but no data returned.
 (This happens regularly with ping tests - no response returns to the request because of a network outage.)
 The SmokeData array represents these missing values as NaN.
 The Smokechart adds color to the smoke for that hour (default - a red tint)
@@ -60,14 +60,14 @@ For example:
 * "Cannot plot bands of [ 0, 1, 2 ]" (since it's not a well-formed array of arrays.)
 * "Cannot plot bands of [ [0, 1], 'text' ]" (C'mon...)
 
-**Handling Peculiar Data Situations:** What if there are a small number of elements in a row?
+**Handling Peculiar Data Situations:** What if there are a few elements in a row?
 
 * 0 rows ([ ] as smokeData) - "Error: No data provided."
 * 1 row - should just work
 * 0 elements in a row - blank stripe
 * 1 element in a row - draw the median
-* 2 elements in a row - draw the average, darkest band at min/max
-* 3-10 elements in a row - draw middle (median/average) value, darkest band for min/max  
+* 2 elements in a row - draw the average, the darkest band at min/max
+* 3-10 elements in a row - draw middle (median/average) value, the darkest band for min/max  
 * all NaN - (1 or more NaN) Error Color drawn at zero
 * N% NaN - tint the smoke with Error Color, tint the median, too
 * 10%+ NaN - color median as Error Color, too
@@ -79,7 +79,7 @@ For example:
 * Yes. ~~Does [0.1, 0.9] actually indicate the 10th & 90th percentile samples?~~
 * Yes. ~~Are the bands actually drawn correctly, or do they use some computed notion of
 "where they oughta be..." (see d3.quantile(smokeData[2], 0.2) discussion...~~
-* ~~Why can't the package handle a single row of `[ [1] ]`? Seems to require three rows(?)~~ Seems OK now
+* ~~Why can't the package handle a single row of `[ [1] ]`? Seems to require three rows(?)~~ Seems OK now.
 * Remove all APIs that offer # bands, only offer ranges...
 * Use differing opacities for bands (instead of just 0.18)
 * Can X/Y Bounds default to the enclosing div?
@@ -112,7 +112,7 @@ Along the way, it prepares an array (with the same number of rows) suitable for 
 
 **quantile(HourSamples, q)** - determine the q'th sample of the array.
 
-Each of these functions returns the class object so they can be chained.
+Each of these functions returns the class object, allowing them to be chained.
 
 * **smoke(SmokeData, Opts?)** - This function can be called to return the chartable data array.
 

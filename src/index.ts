@@ -291,9 +291,17 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    * @param d - the area to be filled
    * @param i - the i'th element - used to retrieve the opacity from smokeOpacity
    * @returns string "rgba(R,G,B,opacity)"
+   *
+   * Uses smokeOpacity to determine the opacity/darkness of this band.
+   * If not enough items in smokeOpacity, use the last one repeatedly
    */
   smoke.fillSmoke = (d: string, i: number) => {
-    return "rgba(0,0,0,0.18)"
+    let ix = i;
+    if (i >= smokeProps.smokeOpacity.length) {
+     ix = smokeProps.smokeOpacity.length-1
+    }
+    const opacity = smokeProps.smokeOpacity[ix]
+    return `rgba(0,0,0,${opacity})`
     // return rgb(0,0,0,0.18)
   }
 
