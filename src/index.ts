@@ -83,7 +83,7 @@ export const calculateSmokeBounds = (v: HourSamples, percentiles: (number[])[]) 
  *
  *
  */
-export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
+export const Smokechart = (smokeData: SmokeData , opts?: Partial<SmokechartProps>) => {
   const smokeProps: SmokechartProps = {
     scaleX: scaleLinear(),
     scaleY: scaleLinear(),
@@ -101,7 +101,22 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
     // numStripes: 0           // 0 means use actual number of rows,
     //                              otherwise inject rows at front to make enough stripes
   }
+  /**
+   * AddProps() - Update the props to the Smokechart
+   * @param opts - SmokeChartProps to be updated
+   */
+  const AddProps = (opts: Partial<SmokechartProps>) => {
+    console.log ("AddProps() " + JSON.stringify(opts))
+    Object.assign(smokeProps, opts)
+    if (opts.scaleX || opts.scaleY) {
+      // adjustScaleRange()
+      console.log("Adding scaleX or scaleY")
+    }
+  }
 
+  if (opts) {
+    AddProps(opts);
+  }
   let cleanedData: SmokeData = []          // class variable to hold The Data (raw samples, sorted, less NaN)
   let hourErrs: number[] = [];             // class variable to hold %NaN for each row/hour
   // let hourMedian: number[] = [];           // class variable to hold median for each row/hour
@@ -112,20 +127,14 @@ export const Smokechart = (smokeData?: SmokeData | Partial<SmokechartProps>, opt
    * @param smokeData
    * @param opts
    *
-   * Two ways to call the smoke() function:
-   *   smoke(SmokeData, options) - sets the options from the passed-in options
-   *   smoke(<something that looks like "partial options" - sets the options, clears smokeData)
-   * options are always merged with the existing/default smokeProps
    */
-  const smoke = (smokeData?: SmokeData | Partial<SmokechartProps>, opts?: Partial<SmokechartProps>) => {
-    if (smokeData && !Array.isArray(smokeData)) {
-      opts = smokeData
-      smokeData = undefined
-    }
-    if (opts) Object.assign(smokeProps, opts)
+  const smoke = (smokeData: SmokeData , opts?: Partial<SmokechartProps>) => {
+    // if (!smokeData || !Array.isArray(smokeData)) {
+    //   throw new Error(`smokeData is not an array`)
+    // }
+    if (opts) AddProps(opts)
     if (smokeData) smoke.data(smokeData)
 
-    classSuffix = Math.floor(Math.random() * 100000)
     return smoke
   }
 

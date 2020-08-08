@@ -9,8 +9,8 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <h3>Using selection.call(obj.chart, args)</h3>
-    <div id="smokeTest1" style="height: 300px; width:1050px;"></div>
+<!--    <h3>Using selection.call(obj.chart, args)</h3>-->
+<!--    <div id="smokeTest1" style="height: 300px; width:1050px;"></div>-->
     <h3>Using obj.line(N) and obj.smokeBands(M)</h3>
     <div id="smokeTest2"></div>
   </body>
@@ -88,18 +88,20 @@
     const scaleX = d3.scaleLinear([50, 1000])
     const scaleY = d3.scaleLinear([290, 10])
 
-    const smoker = d3.Smokechart({ scaleX, scaleY }).data(smokeData).adjustScaleRange()
+    const smoker = d3.Smokechart(smokeData, { scaleX, scaleY })
+            // .data(smokeData)
+            .adjustScaleRange()
     const errors = smoker.countErrors()
     // console.log (JSON.stringify(typeof smoker))
 
     // console.log(d3.quantile(smokeData[2], 0.2));
 
-    let height = document.getElementById("smokeTest1").style.height
-    let width  = document.getElementById("smokeTest1").style.width;
+    // let height = document.getElementById("smokeTest1").style.height
+    // let width  = document.getElementById("smokeTest1").style.width;
 
     // Call the built-in method to create the smokechart
-    const test1 = d3.select("#smokeTest1").append("svg").attr("width", width).attr("height", height)
-    test1.append("g").call(smoker.chart, { mode: "smoke", bands: 5, errors: false })
+    // const test1 = d3.select("#smokeTest1").append("svg").attr("width", width).attr("height", height)
+    // test1.append("g").call(smoker.chart, { mode: "smoke", bands: 5, errors: false })
 
     // Call individual methods to build the smokechart "by hand"
     const test2 = d3.select("#smokeTest2").append("svg").attr("width", 1050).attr("height", 300)
