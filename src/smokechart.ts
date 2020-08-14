@@ -92,7 +92,6 @@ export class Smokechart {
         // @ts-ignore
         if (this.smokeProps.scaleX) {
             this.smokeProps.scaleX.domain([0, this.cleanedData.length])
-            console.log("Really? Two elements in the domain?")
             console.log("And why doesn't it fill the full DOM element?")
 
         }
@@ -128,48 +127,32 @@ export class Smokechart {
     }
 
     /**
-     * computeSmokeMedian(quantile) - return a line at the "median" for the chart
-     * quantile (q) could be any number 0 to 1, defaults to "median", 0.5
-     * @param q - the "quantile" to select (0.5 => 50th percentile)
-     * @return a set of D3 lines to pass to D3.data()
-     */
-    computeSmokeMedian(q: number = 0.5) {
-        const l = line<[number, number]>()
-            .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
-            .y(d => (this.smokeProps.scaleY ? this.smokeProps.scaleY(d[1]) : d[1]))
-
-        const quantileData = this.cleanedData
-            .reduce<Array<[number, number]>>((result, values, idx) => {
-                const p = this._quantile(values, q)
-                return [...result, [idx - 0.5, p], [idx + 0.5, p]]
-            }, [])
-
-        return [l(quantileData)]
-    }
-
-    /**
-     * computeSmokePaths - Uses the percentiles from props to return array of paths to draw as "smoke bands"
+     * computeSmokeBandPaths - Uses the percentiles from props to return array of paths to draw as "smoke bands"
      * @return a set of paths suitable to pass to D3.data()
      *
      * This proceeds in two passes:
      * 1) scan each row of the cleanedData to determine the bounds (sample values at each boundary)
      * 2) Use those bounds to calculate X/Y for charting (I think???)
      */
-    computeSmokePaths() {
-        const percentiles: (number[])[] = this.smokeProps.percentiles
-        const l = line<[number, number]>()
+    computeSmokeBandPaths() {
+       // pathGen is a function that generates a rectangular path from its two input values
+        const pathGen = line<[number, number]>()
             .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
             .y(d => (this.smokeProps.scaleY ? this.smokeProps.scaleY(d[1]) : d[1]))
 
+        // for each row of cleanedData:
+        //  - compute its bounds (samples at the edge of the percentile bands)
+        //  - map each set of bounds into a (rectangular) path
+        //  - return that
         const bands = this.cleanedData
             .reduce<string[][]>((result, values, idx) => {
-                const bounds = this._calculateSmokeBounds(values, percentiles)
+                const bounds = this._calculateSmokeBounds(values, this.smokeProps.percentiles)
                 // console.log(`smokeBounds: ${bounds}`) // display the samples at the bounds of the "smoke"
 
                 const x = idx - 0.5
                 const bandLines = bounds.map(
                     ([y0, y1]) =>
-                        l([
+                        pathGen([
                             [x, y0],
                             [x, y1],
                             [x + 1, y1],
@@ -183,6 +166,26 @@ export class Smokechart {
         // each set contains lines for same X value but we best to join
         // lines for same color (bands is matrix of [rowIdx][columnIdx])
         return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
+    }
+
+    /**
+     * computeSmokeMedianPath(quantile) - return a line at the "median" for the chart
+     * quantile (q) could be any number 0 to 1, defaults to "median", 0.5
+     * @param q - the "quantile" to select (0.5 => 50th percentile)
+     * @return a set of D3 lines to pass to D3.data()
+     */
+    computeSmokeMedianPath(q: number = 0.5) {
+        const lineGen = line<[number, number]>()
+            .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
+            .y(d => (this.smokeProps.scaleY ? this.smokeProps.scaleY(d[1]) : d[1]))
+
+        const quantileData = this.cleanedData
+            .reduce<Array<[number, number]>>((result, values, idx) => {
+                const p = this._quantile(values, q)
+                return [...result, [idx - 0.5, p], [idx + 0.5, p]]
+            }, [])
+
+        return [lineGen(quantileData)]
     }
 
     /**
@@ -239,8 +242,8 @@ function testAll() {
         .adjustScaleRange()
 
 // these methods return something other than "this", and can't be chained
-    theChart.computeSmokePaths()
-    theChart.computeSmokeMedian()
+    theChart.computeSmokeBandPaths()
+    theChart.computeSmokeMedianPath()
     theChart._quantile([1], 0.5)
     theChart._calculateSmokeBounds([1], [[0, 1], [0.1, 0.9]])
     theChart.fillSmoke("a", 0)
