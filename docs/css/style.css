@@ -1,0 +1,44 @@
+/*from https://static.bocoup.com/blog/showing-missing-data-in-line-charts/style.css*/
+
+/*body, html {*/
+/*    padding: 0;*/
+/*    margin: 0;*/
+/*}*/
+
+/*.replay, .reset {*/
+/*    margin-bottom: 5px;*/
+/*}*/
+
+/*path {*/
+/*    stroke: #0bb;*/
+/*    stroke-width: 1.5px;*/
+/*    stroke-linecap: round; !* this is necessary to show lines with no length *!*/
+/*    fill: none;*/
+/*}*/
+
+#gap-line {
+    stroke-dasharray: 1 4;
+    opacity: 0.4;
+}
+
+circle {
+    fill: #0bb;
+}
+
+.path-d-string {
+    width: 160px;
+    display: inline-block;
+    overflow: hidden;
+    margin-right: 15px;
+    margin-top: 8px;
+    font-size: 12px;
+    font-family: sans-serif;
+    vertical-align: top;
+}
+
+#smokechart2 {
+    stroke: #0bb;
+    stroke-width: 1.5px;
+    stroke-linecap: round; /* this is necessary to show lines with no length */
+    fill: none;
+}

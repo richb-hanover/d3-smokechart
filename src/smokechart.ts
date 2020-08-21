@@ -17,7 +17,7 @@ export interface SmokechartProps {
     smokeOpacity: number[];
     // medianColor: string;
     // errorColor: string
-    // numStripes: number;
+    numStripes: number;
 }
 
 /**
@@ -43,7 +43,7 @@ export class Smokechart {
         // medianColor: "#1976D2", // blue-700
         // medianColor: "#388E3C", // green-700
         // errorColor: "#D32F2F",  // red-700
-        // numStripes: 0           // 0 means use actual number of rows,
+        numStripes: 0              // 0 means use actual number of rows,
         //                              otherwise inject rows at front to make enough stripes
     }
     cleanedData: SmokeData = []          // class variable to hold The Data (raw samples, sorted, less NaN)
@@ -79,6 +79,11 @@ export class Smokechart {
     cleanData(smokeData: SmokeData) {
         this.cleanedData = smokeData.map(arr => [...arr.filter(n => !isNaN(n))]
             .sort((a, b) => a - b))
+        if (this.smokeProps.numStripes !== 0) {
+            for (let i = 0; i < this.smokeProps.numStripes - smokeData.length; i++) {
+                this.cleanedData.unshift([])
+            }
+        }
         this.hourErrs = [0.5, 1, 0];        // BOGUS Error Data
         this.adjustScaleRange()
         return this;
@@ -92,21 +97,19 @@ export class Smokechart {
         // @ts-ignore
         if (this.smokeProps.scaleX) {
             this.smokeProps.scaleX.domain([0, this.cleanedData.length])
-            console.log("And why doesn't it fill the full DOM element?")
-
         }
         if (!this.smokeProps.scaleY) return
         let minY = Infinity
         let maxY = -Infinity
-        this.cleanedData.forEach(arr => {
-            if (arr.length) {
-                if (arr[0] < minY) minY = arr[0]
-                if (arr[arr.length - 1] > maxY) maxY = arr[arr.length - 1]
+        this.cleanedData.forEach(arr => {           // for each (sorted) row of cleanedData
+            if (arr.length) {                       // if this row has data
+                minY = Math.min(minY,arr[0])        // arr[0] is that row's minimum
+                maxY = Math.max(maxY, arr[arr.length - 1]) // last item is max
             }
         })
         this.smokeProps.scaleY.domain([minY, maxY])
-        console.log("X domain: " + JSON.stringify([0, this.cleanedData.length]))
-        console.log("Y domain: " + JSON.stringify([minY, maxY]))
+        // console.log("X domain: " + JSON.stringify([0, this.cleanedData.length]))
+        // console.log("Y domain: " + JSON.stringify([minY, maxY]))
 
         return this;
     }
@@ -149,7 +152,7 @@ export class Smokechart {
                 const bounds = this._calculateSmokeBounds(values, this.smokeProps.percentiles)
                 // console.log(`smokeBounds: ${bounds}`) // display the samples at the bounds of the "smoke"
 
-                const x = idx - 0.5
+                const x = idx
                 const bandLines = bounds.map(
                     ([y0, y1]) =>
                         pathGen([
@@ -173,19 +176,39 @@ export class Smokechart {
      * quantile (q) could be any number 0 to 1, defaults to "median", 0.5
      * @param q - the "quantile" to select (0.5 => 50th percentile)
      * @return a set of D3 lines to pass to D3.data()
+     *
+     * NB: The medianLine always winds up being 8 px longer than the smokeBands
+     * Not sure why. But it's clipped to the bounds of the SVG <g>, so it looks OK
      */
     computeSmokeMedianPath(q: number = 0.5) {
+
+        // function to convert line segments (using samples) to
+        //  graph coordinates
         const lineGen = line<[number, number]>()
+            .defined(d => !isNaN(d[0])) // [NaN,NaN] represents an empty sample row
             .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
             .y(d => (this.smokeProps.scaleY ? this.smokeProps.scaleY(d[1]) : d[1]))
 
-        const quantileData = this.cleanedData
+        // Compute array of [X,Y] line segments with:
+        // X value in the range of [0..N+1] for N rows of sample data
+        // Y value of the sample to be plotted
+        // Each "row" of sample data has two points at X and X+1
+        // D3 will draw a line connecting each of the points in the array
+        // If the row of samples is empty, instead
+        //    substitute [NaN, NaN], [NaN, NaN] for the endpoints
+        const lineSegments = this.cleanedData
             .reduce<Array<[number, number]>>((result, values, idx) => {
+                if (values.length === 0) // if no samples for this row...
+                {return [...result, [NaN, NaN], [NaN, NaN] ]}
+                // otherwise find the median (or q-th percentile)
                 const p = this._quantile(values, q)
-                return [...result, [idx - 0.5, p], [idx + 0.5, p]]
+                // console.log([...result, [idx , p], [idx + 1, p]])
+                return [...result, [idx , p], [idx + 1, p]]
             }, [])
 
-        return [lineGen(quantileData)]
+        // console.log(lineGen(lineSegments))
+        // Use lineSegments to compute the path (in graphics coordinates) to draw the line
+        return [lineGen(lineSegments)]
     }
 
     /**

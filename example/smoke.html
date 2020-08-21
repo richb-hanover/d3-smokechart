@@ -5,35 +5,61 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Test 1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smokechart v3</title>
+    <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.3/build/pure-min.css" integrity="sha384-cg6SkqEOCV1NbJoCu11+bm0NvBRc8IYLRGXkmNrqUBfTjmMYwNKPWBTIKyw9mHNJ" crossorigin="anonymous">
+    <link rel="stylesheet" href="http://localhost:3000/docs/css/style.css">
 </head>
 <body>
-<h1>Smokechart v2 Test Page</h1>
+<div  class="pure-g-1" style="padding:10px"> <!-- one column Pure CSS grid -->
+<h1>Smokechart v3 Test Page</h1>
 
-<p>Here is the smoke chart</p>
+<p>Original Smokechart v3</p>
 
-<div id="smokechart" style="height:300px; width:1000px; border:1px solid pink;">
+<div id="smokechart1" style="height:300px; width:500px; border:1px solid pink;"></div>
 
+<p>Simplified Smokechart drawing code from
+    <a href="https://bocoup.com/blog/showing-missing-data-in-line-charts">
+        https://bocoup.com/blog/showing-missing-data-in-line-charts</a>
+</p>
+
+<div style="height:300px; width:500px; border:1px solid pink;">
+    <svg>
+        <path id="smokechart2"/>
+    </svg>
 </div>
+
 <noscript>You need to enable JavaScript to run this app.</noscript>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="http://localhost:3000/umd/smokechart.js"  ></script>
 <script>
 
   // first get the dimensions and other info of the <div>
-  const theDiv = document.getElementById("smokechart")
-  const theHeight = theDiv.style.height
-  const theWidth = theDiv.style.width
+  const theDiv1 = document.getElementById("smokechart1")
+  const theWidth1 = theDiv1.scrollWidth
+  const theHeight1 = theDiv1.scrollHeight
 
-// Now set up the Smokechart
+  const theDiv2 = document.getElementById("smokechart2")
+  const theWidth2 = theDiv2.scrollWidth
+  const theHeight2 = theDiv2.scrollHeight
+
+  // Now set up the Smokechart
+
   const smokeData = [
-    // [100],
+    [100]
+    , [],
     [0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,200,205,210,215,220,225,230,235,240,245,250,255,260,265,270,275,280,285,290,295,300,305,310,315,320,325,330,335,340,345,350,355,360,365,370,375,380,385,390,395,400,405,410,415,420,425,430,435,440,445,450,455,460,465,470,475,480,485,490,495,500 ]
-    // , [100]
-    // , [200]
-    // , [300]
-    // , [400]
-  ]
+    // , []
+    // , []
+    // , []
+    , [200]
+    , [300]
+    , [400]
+    , []
+    , [300]
+    , [200]
+    , [100]
+   ]
 
   // prettier-ignore
   // const smokeData = [
@@ -96,35 +122,37 @@
   //   ,[150, 175, 200, 225, 250 ]
   // ]
 
+  console.log(`theWidth1 ${theWidth1}`)
   const smokeOpts = {
     percentiles: [[0, 1], [0.05, 0.95]],
     smokeOpacity: [0.10],
-    scaleX: d3.scaleLinear([50, 1000]),
-    scaleY: d3.scaleLinear([250, 10])
+    scaleX: d3.scaleLinear([0, theWidth1]),
+    scaleY: d3.scaleLinear([250, 10]),
+    numStripes: 0
   }
-  const newChart = new Smokechart.Smokechart(smokeData, smokeOpts)
+  const newChart1 = new Smokechart.Smokechart(smokeData, smokeOpts)
   // add any Smokechart options to override built-ins here
-  // newChart.addProps(smokeOpts)
+  // newChart1.addProps(smokeOpts)
 
 // Now start getting D3 ready to add in the smoke data
-  const chart1 = d3.select("#smokechart")
+  const chart1 = d3.select("#smokechart1")
     .append("svg")
-    .attr("width", theWidth)
-    .attr("height", theHeight )
+    .attr("width", theWidth1)
+    .attr("height", theHeight1 )
     const g = chart1.append("g")
 
   // draw the smoke bands
    g.selectAll("path.smokeBand")
-    .data(newChart.computeSmokeBandPaths())
+    .data(newChart1.computeSmokeBandPaths())
     .enter()
     .append("path")
     .classed("smokeBand", true)
-    .attr("fill", function(d, i) {return newChart.fillSmoke(d, i)})
+    .attr("fill", function(d, i) {return newChart1.fillSmoke(d, i)})
     .attr("d", d => d)
 
   // draw the median line
   g.selectAll("path.medianLine")
-    .data(newChart.computeSmokeMedianPath())
+    .data(newChart1.computeSmokeMedianPath())
     .enter()
     .append("path")
     .classed("medianLine", true)
@@ -133,8 +161,51 @@
     .attr("fill", "transparent")
     .attr("d", d => d)
 
+  /**
+   *  Simplified line drawing from https://bocoup.com/blog/showing-missing-data-in-line-charts
+   *
+   * @type {Smokechart}
+   */
+  const newChart2 = new Smokechart.Smokechart(smokeData, smokeOpts)
+  // add any Smokechart options to override built-ins here
+  // newChart1.addProps(smokeOpts)
 
+  const line2 = d3.line()
+    .defined(function (d) { return d[1] !== null; });
+  const data2 = [[0, 100], [50, 0], [100, 50], [150, null],
+    [200, 40], [250, 150], [400, 20], [450, 70], [500, 100] ]
+
+  // Now start getting D3 ready to add in the smoke data
+  d3.select("#smokechart2")  // the svg > path element
+    .attr("d", line2(data2))
+
+  //   .append("svg")
+  //   .attr("width", theWidth2)
+  //   .attr("height", theHeight2 )
+  // const g2 = chart2.append("g")
+
+  // // draw the smoke bands
+  // g2.selectAll("path.smokeBand")
+  //   .data(newChart2.computeSmokeBandPaths())
+  //   .enter()
+  //   .append("path")
+  //   .classed("smokeBand", true)
+  //   .attr("fill", function(d, i) {return newChart2.fillSmoke(d, i)})
+  //   .attr("d", d => d)
+
+  // draw the median line
+  // g2.selectAll("path.medianLine")
+  //   .data(newChart2.computeSmokeMedianPath())
+  //   .enter()
+  //   .append("path")
+  //   // .data(newChart2.computeSmokeMedianPath())
+  //   .classed("medianLine", true)
+  //   .attr("stroke", "#00cc00")
+  //   .attr("stroke-width", 2)
+  //   .attr("fill", "transparent")
+  //   .attr("d", d => d)
 
 </script>
+</div>
 </body>
 </html>
