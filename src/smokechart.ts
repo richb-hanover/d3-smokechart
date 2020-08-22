@@ -134,26 +134,26 @@ export class Smokechart {
      * @return a set of paths suitable to pass to D3.data()
      *
      * This proceeds in two passes:
-     * 1) scan each row of the cleanedData to determine the bounds (sample values at each boundary)
-     * 2) Use those bounds to calculate X/Y for charting (I think???)
+     * 1) scan each row of the cleanedData to determine the bounds - the sample values at each boundary
+     * 2) Use those bounds to calculate the bandEdges -
      */
     computeSmokeBandPaths() {
-       // pathGen is a function that generates a rectangular path from its two input values
+       // pathGen() generates a rectangular path from its input values
         const pathGen = line<[number, number]>()
+            .defined( d => (d[1] !== undefined))  // filter out empty rows of samples
             .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
             .y(d => (this.smokeProps.scaleY ? this.smokeProps.scaleY(d[1]) : d[1]))
 
         // for each row of cleanedData:
         //  - compute its bounds (samples at the edge of the percentile bands)
-        //  - map each set of bounds into a (rectangular) path
-        //  - return that
+        //  - map each set of bounds into a (rectangular) path for the (multiple) bands of smoke
         const bands = this.cleanedData
             .reduce<string[][]>((result, values, idx) => {
                 const bounds = this._calculateSmokeBounds(values, this.smokeProps.percentiles)
-                // console.log(`smokeBounds: ${bounds}`) // display the samples at the bounds of the "smoke"
+                // console.log(`smokeBounds: ${JSON.stringify(bounds)}`) // display the samples at the bounds of the "smoke"
 
                 const x = idx
-                const bandLines = bounds.map(
+                const bandEdges = bounds.map(
                     ([y0, y1]) =>
                         pathGen([
                             [x, y0],
@@ -162,12 +162,10 @@ export class Smokechart {
                             [x + 1, y0],
                         ]) || ""
                 )
-                return [...result, bandLines]
+                return [...result, bandEdges]
             }, [] as string[][])
 
         // console.log(`bands: ${JSON.stringify(bands)}`)
-        // each set contains lines for same X value but we best to join
-        // lines for same color (bands is matrix of [rowIdx][columnIdx])
         return bands[0].map((_, columnIdx) => bands.map(row => row[columnIdx]).join(""))
     }
 
@@ -182,8 +180,8 @@ export class Smokechart {
      */
     computeSmokeMedianPath(q: number = 0.5) {
 
-        // function to convert line segments (using samples) to
-        //  graph coordinates
+        // function to convert line segments (whose Y-values are samples)
+        // and X-values are 0 .. N+1 to graph coordinates
         const lineGen = line<[number, number]>()
             .defined(d => !isNaN(d[0])) // [NaN,NaN] represents an empty sample row
             .x(d => (this.smokeProps.scaleX ? this.smokeProps.scaleX(d[0]) : d[0]))
@@ -199,7 +197,7 @@ export class Smokechart {
         const lineSegments = this.cleanedData
             .reduce<Array<[number, number]>>((result, values, idx) => {
                 if (values.length === 0) // if no samples for this row...
-                {return [...result, [NaN, NaN], [NaN, NaN] ]}
+                    {return [...result, [NaN, NaN], [NaN, NaN] ]}
                 // otherwise find the median (or q-th percentile)
                 const p = this._quantile(values, q)
                 // console.log([...result, [idx , p], [idx + 1, p]])
@@ -207,7 +205,6 @@ export class Smokechart {
             }, [])
 
         // console.log(lineGen(lineSegments))
-        // Use lineSegments to compute the path (in graphics coordinates) to draw the line
         return [lineGen(lineSegments)]
     }
 
@@ -227,8 +224,8 @@ export class Smokechart {
     }
 
     /**
-     * _calculateSmokeBounds - Use the percentiles to return corresponding samples
-     *    at the bounds of those percentile ranges
+     * _calculateSmokeBounds - Use the percentiles to return corresponding sample values
+     *    at the bounds ("edges") of those percentile ranges
      *    Will be called on each row of the full SmokeData array
      * @param v - samples from one row of the SmokeData
      * @param percentiles
@@ -258,7 +255,6 @@ function testAll() {
     const theChart = new Smokechart(smokeData, opts)
 
 // chainable methods
-// @ts-ignore
     theChart
         .addProps(opts)
         .cleanData(smokeData)
