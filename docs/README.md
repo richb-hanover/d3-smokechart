@@ -8,7 +8,7 @@ and the resulting chart displays the range of those samples during that hour.
 
 The grey colored bands show how tightly clustered the readings are to the median value for the interval (shown in blue.)
 
-![percentile image](../docs/PercentileBars.png)
+![percentile image](PercentileBars.png)
 
 *Note:* The image above envisioned specifying bands as increasing breakpoints.
 Current code specifies bands as array of arrays whose items are
@@ -125,3 +125,4 @@ It also removes NaN values.
 
 * **adjustScaleRange()** - This function adjusts the X/Y scale input ranges to fit the chart properly
 * 
+__

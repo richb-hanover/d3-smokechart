@@ -18,16 +18,24 @@
 
 <div id="smokechart1" style="height:300px; width:500px; border:1px solid pink;"></div>
 
-<p>Simplified Smokechart drawing code from
-    <a href="https://bocoup.com/blog/showing-missing-data-in-line-charts">
-        https://bocoup.com/blog/showing-missing-data-in-line-charts</a>
-</p>
 
-<div style="height:300px; width:500px; border:1px solid pink;">
-    <svg>
-        <path id="smokechart2"/>
-    </svg>
-</div>
+
+<!--<p>Simplified Smokechart drawing code from-->
+<!--    <a href="https://bocoup.com/blog/showing-missing-data-in-line-charts">-->
+<!--        https://bocoup.com/blog/showing-missing-data-in-line-charts</a>-->
+<!--</p>-->
+
+<!--<div style="height:300px; width:500px; border:1px solid pink;">-->
+<!--    <svg>-->
+<!--        <path id="smokechart2"/>-->
+<!--    </svg>-->
+<!--</div>-->
+
+    <p>All-in-one smoke chart using built-in method </p>
+
+    <div id="smokechart3" style="height:300px; width:500px; border:1px solid pink;">
+        <i>[ not using this example now  ]</i>
+    </div>
 
 <noscript>You need to enable JavaScript to run this app.</noscript>
 <script src="https://d3js.org/d3.v5.min.js"></script>
@@ -39,9 +47,9 @@
   const theWidth1 = theDiv1.scrollWidth
   const theHeight1 = theDiv1.scrollHeight
 
-  const theDiv2 = document.getElementById("smokechart2")
-  const theWidth2 = theDiv2.scrollWidth
-  const theHeight2 = theDiv2.scrollHeight
+  // const theDiv2 = document.getElementById("smokechart2")
+  // const theWidth2 = theDiv2.scrollWidth
+  // const theHeight2 = theDiv2.scrollHeight
 
   // Now set up the Smokechart
 
@@ -55,6 +63,7 @@
     // , []
     , [200]
     , [300]
+    , [300,300,300,300,300,300,300,300,300,300,300,300,300,300,300,300,300,300]
     , [400,410,420,430,440,450,460,470,480,490,500]
     , []
     , [300,310,320,330,340,350,360,370,380,390,300]
@@ -158,28 +167,28 @@
     .enter()
     .append("path")
     .classed("medianLine", true)
-    .attr("stroke", "#00cc00")
+    .attr("stroke", newChart1.smokeProps.medianColor)
     .attr("stroke-width", 2)
     .attr("fill", "transparent")
     .attr("d", d => d)
 
-  /**
-   *  Simplified line drawing from https://bocoup.com/blog/showing-missing-data-in-line-charts
-   *
-   * @type {Smokechart}
-   */
-  const newChart2 = new Smokechart.Smokechart(smokeData, smokeOpts)
-  // add any Smokechart options to override built-ins here
-  // newChart1.addProps(smokeOpts)
-
-  const line2 = d3.line()
-    .defined(function (d) { return d[1] !== null; });
-  const data2 = [[0, 100], [50, 0], [100, 50], [150, null],
-    [200, 40], [250, 150], [400, 20], [450, 70], [500, 100] ]
-
-  // Now start getting D3 ready to add in the smoke data
-  d3.select("#smokechart2")  // the svg > path element
-    .attr("d", line2(data2))
+  // /**
+  //  *  Simplified line drawing from https://bocoup.com/blog/showing-missing-data-in-line-charts
+  //  *
+  //  * @type {Smokechart}
+  //  */
+  // const newChart2 = new Smokechart.Smokechart(smokeData, smokeOpts)
+  // // add any Smokechart options to override built-ins here
+  // // newChart1.addProps(smokeOpts)
+  //
+  // const line2 = d3.line()
+  //   .defined(function (d) { return d[1] !== null; });
+  // const data2 = [[0, 100], [50, 0], [100, 50], [150, null],
+  //   [200, 40], [250, 150], [400, 20], [450, 70], [500, 100] ]
+  //
+  // // Now start getting D3 ready to add in the smoke data
+  // d3.select("#smokechart2")  // the svg > path element
+  //   .attr("d", line2(data2))
 
   //   .append("svg")
   //   .attr("width", theWidth2)
